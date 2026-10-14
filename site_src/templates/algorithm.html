@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ a.name }} · {{ a.en }} — Optimization Tutor{% endblock %}
+{% block description %}{{ a.summary }}{% endblock %}
+{% block content %}
+<article class="algo">
+  <nav class="crumbs"><a href="../index.html">目錄</a> › {{ cat.families[a.family] }}</nav>
+  <header class="algo-head">
+    <h1>{{ a.name }} <span class="en">{{ a.en }}</span></h1>
+    <p class="lede">{{ a.summary }}</p>
+    <div class="meta-tags">
+      <span class="tag">{{ cat.problems[a.problem] }}</span>
+      <span class="tag">{{ cat.info[a.info] }}</span>
+      {% for t in a.tags %}<span class="tag tag-quiet">{{ cat.tags.get(t, t) }}</span>{% endfor %}
+      {% for d in a.domains %}<span class="tag tag-domain">{{ cat.domains[d] }}</span>{% endfor %}
+    </div>
+    {% if a.after or a.children %}
+    <div class="lineage">
+      {% if a.after %}<span>建立在：{% for p in a.after %}<a href="{{ p }}.html">{{ cat.by_id[p].name }}</a>{% if not loop.last %}、{% endif %}{% endfor %}</span>{% endif %}
+      {% if a.children %}<span>延伸出：{% for c in a.children %}<a href="{{ c }}.html">{{ cat.by_id[c].name }}</a>{% if not loop.last %}、{% endif %}{% endfor %}</span>{% endif %}
+    </div>
+    {% endif %}
+    {% if meta.review == "draft" %}
+    <p class="draft-note" role="note">AI 草稿：本頁由 AI 起草，作者尚未逐段審閱。文中數值皆為本站程式實際執行的結果。</p>
+    {% endif %}
+  </header>
+
+  {% if body %}
+  <div class="prose">{{ body|safe }}</div>
+  {% else %}
+  <div class="stub">
+    <p>這一頁還在建置中。完成後會包含：</p>
+    <ol>
+      <li>定義：數學形式、假設、虛擬碼與收斂性</li>
+      <li>應用場景：跨領域的實際例子</li>
+      <li>解決什麼問題：它補了前一個方法的哪個缺點</li>
+      <li>動畫演示：可調參數的互動動畫</li>
+      <li>Scratch practice：在瀏覽器中從零實作並自動檢查</li>
+    </ol>
+    <p>目前已完成的頁面可以從<a href="../index.html">目錄</a>勾選「只看已有內容的」找到。</p>
+  </div>
+  {% endif %}
+</article>
+{% if lab_json %}<script type="application/json" id="lab-data">{{ lab_json|safe }}</script>{% endif %}
+{% if practice_json %}<script type="application/json" id="practice-data">{{ practice_json|safe }}</script>{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if lab_json %}<script type="module" src="{{ root }}/static/js/lab.js"></script>{% endif %}
+{% if practice_json %}<script type="module" src="{{ root }}/static/js/practice.js"></script>{% endif %}
+{% endblock %}

@@ -1,0 +1,655 @@
+# Algorithm catalog: one entry per algorithm. The home page, filters and
+# stub pages are generated from this file. Detailed pages live in
+# content/algorithms/<id>.md and are picked up automatically.
+#
+# Fields: id, name (zh), en, family, problem, info, tags, domains, summary,
+#         after (ids this algorithm builds on)
+
+families:
+  line-search: 一維搜尋
+  first-order: 一階方法
+  second-order: 二階與擬牛頓
+  derivative-free: 無導數方法
+  constrained: 有限制最佳化
+  lp-qp: 線性與二次規劃
+  combinatorial: 整數與組合最佳化
+  metaheuristic: 啟發式演算法
+  multi-objective: 多目標最佳化
+  ml: 機器學習中的最佳化
+  quantum: 量子與物理啟發
+
+problems:
+  continuous: 連續無限制
+  constrained: 連續有限制
+  linear: 線性 / 二次規劃
+  discrete: 整數 / 組合
+  multi-objective: 多目標
+  black-box: 黑箱 / 昂貴函數
+
+info:
+  zero-order: 不需導數
+  first-order: 需要梯度
+  second-order: 需要 Hessian
+  structure: 利用問題結構
+
+domains:
+  ml: 機器學習
+  agriculture: 農業
+  hydrology: 水文水資源
+  logistics: 物流排程
+  energy: 能源
+  engineering: 工程設計
+  finance: 金融
+  geoscience: 地球科學反演
+
+tags:
+  deterministic: 確定性
+  stochastic: 隨機性
+  local: 局部收斂
+  global: 全域搜尋
+  guaranteed: 保證收斂
+  building-block: 基礎元件
+  adaptive: 自適應步長
+  interior: 內點型
+  projection-free: 免投影
+  distributed: 可分散式
+  exact: 精確解
+  polynomial: 多項式時間
+  heuristic: 啟發式
+  population: 族群型
+  surrogate: 代理模型
+  scalarization: 純量化
+  decomposition: 分解法
+  modeling: 建模技巧
+  hybrid: 量子-古典混合
+
+algorithms:
+  # ---- 一維搜尋 ----
+  - id: bisection
+    name: 二分法
+    en: Bisection Method
+    family: line-search
+    problem: continuous
+    info: first-order
+    tags: [deterministic, guaranteed]
+    domains: [engineering]
+    summary: 對導數的符號做二分，區間每步減半，保證收斂但只適用一維。
+  - id: golden-section
+    name: 黃金分割搜尋
+    en: Golden-Section Search
+    family: line-search
+    problem: continuous
+    info: zero-order
+    tags: [deterministic, guaranteed]
+    domains: [engineering]
+    summary: 只用函數值，以黃金比例縮小單峰函數的搜尋區間，每步重用一個舊點。
+  - id: wolfe-line-search
+    name: Armijo / Wolfe 線搜尋
+    en: Armijo / Wolfe Line Search
+    family: line-search
+    problem: continuous
+    info: first-order
+    tags: [deterministic, building-block]
+    domains: [ml, engineering]
+    summary: 決定沿搜尋方向走多遠的規則：要「下降夠多」也不能「走太短」。
+    after: [gd]
+
+  # ---- 一階方法 ----
+  - id: gd
+    name: 梯度下降
+    en: Gradient Descent
+    family: first-order
+    problem: continuous
+    info: first-order
+    tags: [deterministic, local]
+    domains: [ml, geoscience, engineering]
+    summary: 每步沿負梯度方向走一小步，所有一階方法的起點。
+  - id: sgd
+    name: 隨機梯度下降
+    en: Stochastic Gradient Descent
+    family: first-order
+    problem: continuous
+    info: first-order
+    tags: [stochastic, local]
+    domains: [ml]
+    summary: 用一小批資料估計梯度，用雜訊換取每步極低的成本。
+    after: [gd]
+  - id: momentum
+    name: 動量法
+    en: Momentum (Heavy Ball)
+    family: first-order
+    problem: continuous
+    info: first-order
+    tags: [deterministic, local]
+    domains: [ml]
+    summary: 讓參數像有質量的球一樣累積速度，抑制峽谷中的來回震盪。
+    after: [gd]
+  - id: nesterov
+    name: Nesterov 加速梯度
+    en: Nesterov Accelerated Gradient
+    family: first-order
+    problem: continuous
+    info: first-order
+    tags: [deterministic, local]
+    domains: [ml]
+    summary: 先沿慣性往前看一步再算梯度，在凸問題上達到一階方法的最佳收斂率。
+    after: [momentum]
+  - id: adagrad
+    name: AdaGrad
+    en: AdaGrad
+    family: first-order
+    problem: continuous
+    info: first-order
+    tags: [adaptive, local]
+    domains: [ml]
+    summary: 每個座標依累積梯度平方自動縮放步長，適合稀疏特徵。
+    after: [gd]
+  - id: rmsprop
+    name: RMSProp
+    en: RMSProp
+    family: first-order
+    problem: continuous
+    info: first-order
+    tags: [adaptive, local]
+    domains: [ml]
+    summary: 把 AdaGrad 的累加改成指數移動平均，避免步長單調縮到零。
+    after: [adagrad]
+  - id: adam
+    name: Adam
+    en: Adam
+    family: first-order
+    problem: continuous
+    info: first-order
+    tags: [adaptive, stochastic, local]
+    domains: [ml]
+    summary: 動量加上 RMSProp 縮放並做偏差修正，深度學習的預設優化器。
+    after: [momentum, rmsprop]
+  - id: coordinate-descent
+    name: 座標下降
+    en: Coordinate Descent
+    family: first-order
+    problem: continuous
+    info: first-order
+    tags: [deterministic, local]
+    domains: [ml, finance]
+    summary: 一次只沿一個座標最佳化，Lasso 等可分離問題的利器。
+    after: [gd]
+
+  # ---- 二階與擬牛頓 ----
+  - id: newton
+    name: 牛頓法
+    en: Newton's Method
+    family: second-order
+    problem: continuous
+    info: second-order
+    tags: [deterministic, local]
+    domains: [engineering, geoscience]
+    summary: 用 Hessian 建立二次近似並直接跳到其最低點，靠近解時二次收斂。
+    after: [gd]
+  - id: gauss-newton
+    name: 高斯-牛頓法
+    en: Gauss-Newton
+    family: second-order
+    problem: continuous
+    info: structure
+    tags: [deterministic, local]
+    domains: [geoscience, engineering]
+    summary: 針對最小平方問題，用 JᵀJ 近似 Hessian，不必算二階導數。
+    after: [newton]
+  - id: levenberg-marquardt
+    name: Levenberg-Marquardt
+    en: Levenberg-Marquardt
+    family: second-order
+    problem: continuous
+    info: structure
+    tags: [deterministic, local]
+    domains: [geoscience, hydrology, engineering]
+    summary: 在 Gauss-Newton 與梯度下降之間自動切換，參數反演與曲線擬合的標準工具。
+    after: [gauss-newton]
+  - id: bfgs
+    name: BFGS
+    en: BFGS
+    family: second-order
+    problem: continuous
+    info: first-order
+    tags: [deterministic, local]
+    domains: [engineering, finance]
+    summary: 只用梯度差逐步累積 Hessian 近似，享有超線性收斂。
+    after: [newton]
+  - id: lbfgs
+    name: L-BFGS
+    en: L-BFGS
+    family: second-order
+    problem: continuous
+    info: first-order
+    tags: [deterministic, local]
+    domains: [ml, geoscience]
+    summary: 只記住最近 m 組向量的 BFGS，大規模問題可用，PINN 微調常用。
+    after: [bfgs]
+  - id: nonlinear-cg
+    name: 非線性共軛梯度
+    en: Nonlinear Conjugate Gradient
+    family: second-order
+    problem: continuous
+    info: first-order
+    tags: [deterministic, local]
+    domains: [engineering, geoscience]
+    summary: 讓每個新方向與舊方向「共軛」，記憶體只需幾個向量。
+    after: [gd]
+  - id: trust-region
+    name: 信賴域法
+    en: Trust-Region Methods
+    family: second-order
+    problem: continuous
+    info: second-order
+    tags: [deterministic, local]
+    domains: [engineering]
+    summary: 先限定模型可信的半徑，再在半徑內最佳化，比線搜尋更穩健。
+    after: [newton]
+
+  # ---- 無導數 ----
+  - id: nelder-mead
+    name: Nelder-Mead 單純形法
+    en: Nelder-Mead
+    family: derivative-free
+    problem: black-box
+    info: zero-order
+    tags: [deterministic, local]
+    domains: [engineering, hydrology]
+    summary: 用 n+1 個點組成的單純形反射、擴張、收縮，在低維黑箱問題中很實用。
+  - id: powell
+    name: Powell 法
+    en: Powell's Method
+    family: derivative-free
+    problem: black-box
+    info: zero-order
+    tags: [deterministic, local]
+    domains: [engineering]
+    summary: 沿一組方向依序做一維搜尋，並逐步更新方向集合。
+    after: [golden-section]
+  - id: pattern-search
+    name: 模式搜尋
+    en: Pattern Search
+    family: derivative-free
+    problem: black-box
+    info: zero-order
+    tags: [deterministic, local]
+    domains: [engineering]
+    summary: 在網格模式上試探鄰點，失敗就縮小網格，有收斂保證。
+  - id: bayesian-optimization
+    name: 貝氏最佳化
+    en: Bayesian Optimization
+    family: derivative-free
+    problem: black-box
+    info: zero-order
+    tags: [stochastic, global, surrogate]
+    domains: [ml, engineering, hydrology]
+    summary: 用高斯過程建立代理模型，以採集函數平衡探索與利用，適合昂貴函數。
+
+  # ---- 有限制 ----
+  - id: penalty
+    name: 懲罰函數法
+    en: Penalty Method
+    family: constrained
+    problem: constrained
+    info: first-order
+    tags: [deterministic]
+    domains: [engineering, agriculture]
+    summary: 把違反限制的代價加進目標函數，懲罰係數越大越接近可行解。
+  - id: barrier
+    name: 障礙函數法
+    en: Barrier Method
+    family: constrained
+    problem: constrained
+    info: second-order
+    tags: [deterministic, interior]
+    domains: [engineering, energy]
+    summary: 在可行域邊界築一道趨近無窮的牆，從內部逼近最佳解。
+    after: [newton]
+  - id: augmented-lagrangian
+    name: 增廣 Lagrangian 法
+    en: Augmented Lagrangian
+    family: constrained
+    problem: constrained
+    info: first-order
+    tags: [deterministic]
+    domains: [engineering, geoscience]
+    summary: 結合 Lagrange 乘數與懲罰項，不需無限大懲罰係數就能滿足限制。
+    after: [penalty]
+  - id: projected-gradient
+    name: 投影梯度法
+    en: Projected Gradient Descent
+    family: constrained
+    problem: constrained
+    info: first-order
+    tags: [deterministic]
+    domains: [ml, agriculture]
+    summary: 走一步梯度後投影回可行集合，適合箱型或單純形限制。
+    after: [gd]
+  - id: frank-wolfe
+    name: Frank-Wolfe
+    en: Frank-Wolfe (Conditional Gradient)
+    family: constrained
+    problem: constrained
+    info: first-order
+    tags: [deterministic, projection-free]
+    domains: [ml, logistics]
+    summary: 每步解一個線性子問題代替投影，迭代點永遠可行且稀疏。
+    after: [gd]
+  - id: sqp
+    name: 序列二次規劃
+    en: Sequential Quadratic Programming
+    family: constrained
+    problem: constrained
+    info: second-order
+    tags: [deterministic, local]
+    domains: [engineering, energy]
+    summary: 每步用 QP 近似原問題（二次目標 + 線性化限制），非線性限制問題的主力。
+    after: [newton, qp-active-set]
+  - id: admm
+    name: ADMM
+    en: Alternating Direction Method of Multipliers
+    family: constrained
+    problem: constrained
+    info: first-order
+    tags: [deterministic, distributed]
+    domains: [ml, energy, finance]
+    summary: 把問題拆成兩塊交替最佳化再更新乘數，適合分散式與大規模問題。
+    after: [augmented-lagrangian]
+
+  # ---- 線性與二次規劃 ----
+  - id: simplex
+    name: 單純形法
+    en: Simplex Method
+    family: lp-qp
+    problem: linear
+    info: structure
+    tags: [deterministic, exact]
+    domains: [agriculture, logistics, energy]
+    summary: 沿可行多面體的邊從一個頂點走到更好的頂點，LP 的經典解法。
+  - id: dual-simplex
+    name: 對偶單純形法
+    en: Dual Simplex
+    family: lp-qp
+    problem: linear
+    info: structure
+    tags: [deterministic, exact]
+    domains: [logistics]
+    summary: 維持對偶可行、逐步恢復原始可行，加入新限制後重新求解特別快。
+    after: [simplex]
+  - id: lp-interior-point
+    name: 內點法（LP）
+    en: Interior-Point Method for LP
+    family: lp-qp
+    problem: linear
+    info: structure
+    tags: [deterministic, polynomial]
+    domains: [energy, logistics]
+    summary: 沿中心路徑從多面體內部穿過去，具多項式時間複雜度。
+    after: [barrier, simplex]
+  - id: qp-active-set
+    name: 有效集法（QP）
+    en: Active-Set Method for QP
+    family: lp-qp
+    problem: linear
+    info: structure
+    tags: [deterministic, exact]
+    domains: [finance, engineering]
+    summary: 猜測哪些不等式限制在最佳解是緊的，逐步增刪直到 KKT 成立。
+
+  # ---- 整數與組合 ----
+  - id: branch-and-bound
+    name: 分支定界法
+    en: Branch and Bound
+    family: combinatorial
+    problem: discrete
+    info: structure
+    tags: [deterministic, exact]
+    domains: [logistics, agriculture, energy]
+    summary: 用 LP 鬆弛給出界限，剪掉不可能更好的分支，整數規劃的骨幹。
+    after: [simplex]
+  - id: cutting-plane
+    name: 割平面法
+    en: Cutting-Plane Method
+    family: combinatorial
+    problem: discrete
+    info: structure
+    tags: [deterministic, exact]
+    domains: [logistics]
+    summary: 不斷加入切掉分數解的不等式，讓 LP 鬆弛逼近整數凸包。
+    after: [simplex]
+  - id: dynamic-programming
+    name: 動態規劃
+    en: Dynamic Programming
+    family: combinatorial
+    problem: discrete
+    info: structure
+    tags: [deterministic, exact]
+    domains: [hydrology, logistics, energy]
+    summary: 把問題拆成重疊子問題並記住答案，水庫調度與最短路徑的經典方法。
+  - id: greedy
+    name: 貪婪法
+    en: Greedy Algorithm
+    family: combinatorial
+    problem: discrete
+    info: structure
+    tags: [deterministic, heuristic]
+    domains: [logistics]
+    summary: 每步都選當下最好的選項；對擬陣結構保證最佳，否則只是近似。
+  - id: hungarian
+    name: 匈牙利演算法
+    en: Hungarian Algorithm
+    family: combinatorial
+    problem: discrete
+    info: structure
+    tags: [deterministic, exact, polynomial]
+    domains: [logistics, agriculture]
+    summary: 在多項式時間內解出最佳指派問題，例如把機具分派到田區。
+  - id: two-opt
+    name: 2-opt 局部搜尋
+    en: 2-opt Local Search
+    family: combinatorial
+    problem: discrete
+    info: structure
+    tags: [deterministic, local, heuristic]
+    domains: [logistics, agriculture]
+    summary: 反轉路徑中的一段來消除交叉，TSP 最常用的改進法。
+  - id: tabu-search
+    name: 禁忌搜尋
+    en: Tabu Search
+    family: combinatorial
+    problem: discrete
+    info: zero-order
+    tags: [deterministic, heuristic]
+    domains: [logistics]
+    summary: 記住最近走過的解並禁止回頭，讓局部搜尋跳出局部最佳。
+    after: [two-opt]
+
+  # ---- 啟發式 ----
+  - id: simulated-annealing
+    name: 模擬退火
+    en: Simulated Annealing
+    family: metaheuristic
+    problem: discrete
+    info: zero-order
+    tags: [stochastic, global]
+    domains: [logistics, engineering, geoscience]
+    summary: 模仿金屬或岩漿冷卻：高溫時允許變差，降溫後逐漸收斂。
+  - id: genetic-algorithm
+    name: 遺傳演算法
+    en: Genetic Algorithm
+    family: metaheuristic
+    problem: black-box
+    info: zero-order
+    tags: [stochastic, global, population]
+    domains: [agriculture, engineering, logistics]
+    summary: 以選擇、交配、突變演化一個族群，不需梯度也不怕離散變數。
+  - id: differential-evolution
+    name: 差分演化
+    en: Differential Evolution
+    family: metaheuristic
+    problem: black-box
+    info: zero-order
+    tags: [stochastic, global, population]
+    domains: [engineering, hydrology]
+    summary: 用族群成員的差向量產生突變，連續黑箱問題中簡單又強健。
+    after: [genetic-algorithm]
+  - id: pso
+    name: 粒子群最佳化
+    en: Particle Swarm Optimization
+    family: metaheuristic
+    problem: black-box
+    info: zero-order
+    tags: [stochastic, global, population]
+    domains: [engineering, energy, hydrology]
+    summary: 每個粒子同時被自己與群體的最佳位置吸引，像鳥群覓食。
+  - id: aco
+    name: 蟻群最佳化
+    en: Ant Colony Optimization
+    family: metaheuristic
+    problem: discrete
+    info: zero-order
+    tags: [stochastic, global, population]
+    domains: [logistics, agriculture]
+    summary: 螞蟻沿路留下費洛蒙，好路徑被強化，適合路徑規劃問題。
+  - id: cma-es
+    name: CMA-ES
+    en: CMA-ES
+    family: metaheuristic
+    problem: black-box
+    info: zero-order
+    tags: [stochastic, global, population]
+    domains: [engineering, ml]
+    summary: 調整多變量常態分布的共變異矩陣來學習地形形狀，連續黑箱的頂尖方法。
+    after: [genetic-algorithm]
+  - id: sce-ua
+    name: SCE-UA
+    en: Shuffled Complex Evolution (SCE-UA)
+    family: metaheuristic
+    problem: black-box
+    info: zero-order
+    tags: [stochastic, global, population]
+    domains: [hydrology, geoscience]
+    summary: 把族群分成多個複合體各自演化再洗牌，水文模型參數校準的經典方法。
+    after: [nelder-mead, genetic-algorithm]
+
+  # ---- 多目標 ----
+  - id: weighted-sum
+    name: 加權和法
+    en: Weighted Sum Method
+    family: multi-objective
+    problem: multi-objective
+    info: structure
+    tags: [deterministic, scalarization]
+    domains: [agriculture, engineering]
+    summary: 把多個目標加權成一個，簡單但找不到 Pareto 前緣的凹陷部分。
+  - id: epsilon-constraint
+    name: ε-限制法
+    en: ε-Constraint Method
+    family: multi-objective
+    problem: multi-objective
+    info: structure
+    tags: [deterministic, scalarization]
+    domains: [agriculture, energy]
+    summary: 只最佳化一個目標，其他目標改成上限限制，可找到非凸前緣。
+    after: [weighted-sum]
+  - id: nsga2
+    name: NSGA-II
+    en: NSGA-II
+    family: multi-objective
+    problem: multi-objective
+    info: zero-order
+    tags: [stochastic, population]
+    domains: [agriculture, hydrology, engineering]
+    summary: 以非支配排序與擁擠距離挑選族群，一次求出整條 Pareto 前緣。
+    after: [genetic-algorithm]
+  - id: spea2
+    name: SPEA2
+    en: SPEA2
+    family: multi-objective
+    problem: multi-objective
+    info: zero-order
+    tags: [stochastic, population]
+    domains: [engineering]
+    summary: 用強度值與密度估計配合外部存檔保留菁英解。
+    after: [genetic-algorithm]
+  - id: moead
+    name: MOEA/D
+    en: MOEA/D
+    family: multi-objective
+    problem: multi-objective
+    info: zero-order
+    tags: [stochastic, population, decomposition]
+    domains: [engineering, energy]
+    summary: 把多目標問題分解成多個加權子問題，讓鄰近子問題互相幫忙。
+    after: [weighted-sum, genetic-algorithm]
+
+  # ---- 機器學習中的最佳化 ----
+  - id: least-squares
+    name: 最小平方法
+    en: Linear Least Squares
+    family: ml
+    problem: continuous
+    info: structure
+    tags: [deterministic, exact]
+    domains: [ml, geoscience, hydrology]
+    summary: 解正規方程或用 QR 分解，迴歸、曲線擬合與反演的基礎。
+  - id: kmeans
+    name: k-means（Lloyd 演算法）
+    en: k-means (Lloyd's Algorithm)
+    family: ml
+    problem: discrete
+    info: structure
+    tags: [deterministic, local]
+    domains: [ml, agriculture]
+    summary: 交替「指派到最近中心」與「重算中心」，本質上是座標下降。
+    after: [coordinate-descent]
+  - id: em
+    name: EM 演算法
+    en: Expectation-Maximization
+    family: ml
+    problem: continuous
+    info: structure
+    tags: [deterministic, local]
+    domains: [ml]
+    summary: 對有隱變數的模型交替推估期望與最大化下界，對數概似單調不減。
+  - id: hyperparameter-search
+    name: 網格與隨機搜尋
+    en: Grid & Random Search
+    family: ml
+    problem: black-box
+    info: zero-order
+    tags: [stochastic, global]
+    domains: [ml]
+    summary: 超參數調校的基準線；高維時隨機搜尋往往比網格更有效率。
+
+  # ---- 量子與物理啟發 ----
+  - id: qubo
+    name: QUBO 建模
+    en: QUBO Formulation
+    family: quantum
+    problem: discrete
+    info: structure
+    tags: [modeling]
+    domains: [logistics, agriculture, energy]
+    summary: 把組合問題寫成二元變數的二次型，量子退火與 Ising 求解器的共同語言。
+  - id: quantum-annealing
+    name: 量子退火
+    en: Quantum Annealing
+    family: quantum
+    problem: discrete
+    info: zero-order
+    tags: [stochastic, global]
+    domains: [logistics, finance]
+    summary: 利用量子穿隧在能量地形中尋找基態，概念上是模擬退火的量子版。
+    after: [qubo, simulated-annealing]
+  - id: qaoa
+    name: QAOA
+    en: Quantum Approximate Optimization Algorithm
+    family: quantum
+    problem: discrete
+    info: zero-order
+    tags: [stochastic, hybrid]
+    domains: [logistics]
+    summary: 交替套用問題與混合哈密頓量，再以古典優化器調參數的混合量子演算法。
+    after: [qubo]

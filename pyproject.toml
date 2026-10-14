@@ -1,0 +1,13 @@
+[project]
+name = "optimization-tutor"
+version = "0.1.0"
+description = "Interactive optimization algorithm encyclopedia: definitions, animations and scratch practice."
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+build = ["jinja2>=3.1", "markdown>=3.5", "pyyaml>=6.0"]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

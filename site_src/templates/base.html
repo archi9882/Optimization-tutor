@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Optimization Tutor{% endblock %}</title>
+<meta name="description" content="{% block description %}最佳化演算法互動圖鑑：定義、應用、動畫與從零實作練習。{% endblock %}">
+<link rel="stylesheet" href="{{ katex_base }}katex.min.css">
+<link rel="stylesheet" href="{{ root }}/static/css/style.css">
+<script>
+  // Apply the saved theme before first paint (storage may be unavailable).
+  try {
+    const t = localStorage.getItem("ot-theme");
+    if (t) document.documentElement.dataset.theme = t;
+  } catch (e) {}
+  window.OT_CONFIG = {root: "{{ root }}", pyodideBase: "{{ pyodide_base }}"};
+</script>
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="{{ root }}/index.html">
+    <span class="brand-mark" aria-hidden="true">∇</span>
+    <span>Optimization Tutor<small>最佳化演算法圖鑑</small></span>
+  </a>
+  <nav>
+    <a href="{{ root }}/index.html">目錄</a>
+    <button class="theme-toggle" type="button" aria-label="切換深淺色"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg></button>
+  </nav>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <p>內容由作者與 AI（Claude）協作撰寫；標示「AI 草稿」的頁面尚未經作者審閱。演算法動畫與練習皆在你的瀏覽器中以 Pyodide 執行 Python。</p>
+</footer>
+<script defer src="{{ katex_base }}katex.min.js"></script>
+<script defer src="{{ katex_base }}contrib/auto-render.min.js"></script>
+<script type="module" src="{{ root }}/static/js/common.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

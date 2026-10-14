@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>最佳化演算法圖鑑</h1>
+  <p class="lede">{{ cat.algorithms|length }} 種跨領域常用的最佳化演算法。每一種都依同一個結構整理：定義、應用場景、解決什麼問題、動畫演示，以及在瀏覽器裡從零實作的 scratch practice。</p>
+</section>
+
+<section class="filters" aria-label="篩選">
+  <div class="search-row">
+    <input id="q" type="search" placeholder="搜尋名稱、英文或說明…" aria-label="搜尋演算法">
+    <label class="only-ready"><input type="checkbox" id="only-ready"> 只看已有內容的</label>
+    <span id="count" class="count" aria-live="polite"></span>
+  </div>
+  {% for key, source, title in [("problem", "problems", "問題類型"), ("info", "info", "需要的資訊"), ("domains", "domains", "應用領域")] %}
+  <div class="chip-row" data-group="{{ key }}">
+    <span class="chip-label">{{ title }}</span>
+    {% set labels = cat[source] %}
+    {% for k, v in labels.items() %}
+    <button type="button" class="chip" data-value="{{ k }}" aria-pressed="false">{{ v }}</button>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</section>
+
+<div id="catalog">
+{% for fam, fam_name in cat.families.items() %}
+  <section class="family" data-family="{{ fam }}">
+    <h2>{{ fam_name }}</h2>
+    <div class="cards">
+    {% for a in cat.algorithms if a.family == fam %}
+      <a class="card{% if not a.status.page %} card-stub{% endif %}" href="algorithms/{{ a.id }}.html" data-id="{{ a.id }}">
+        <span class="card-title">{{ a.name }}</span>
+        <span class="card-en">{{ a.en }}</span>
+        <span class="card-summary">{{ a.summary }}</span>
+        <span class="card-foot">
+          <span class="tag">{{ cat.problems[a.problem] }}</span>
+          <span class="tag">{{ cat.info[a.info] }}</span>
+          <span class="progress" aria-label="內容完成度">
+            <span class="dot{% if a.status.page %} on{% endif %}" title="定義與說明"></span>
+            <span class="dot{% if a.status.lab %} on{% endif %}" title="動畫演示"></span>
+            <span class="dot{% if a.status.practice %} on{% endif %}" title="Scratch practice"></span>
+          </span>
+        </span>
+      </a>
+    {% endfor %}
+    </div>
+  </section>
+{% endfor %}
+  <p id="empty" class="empty" hidden>沒有符合條件的演算法。試著取消一些篩選。</p>
+</div>
+<p class="legend-note"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span> 三個點依序代表：說明頁、動畫、練習。</p>
+<script type="application/json" id="cards-data">{{ cards_json|safe }}</script>
+{% endblock %}
+{% block scripts %}<script type="module" src="{{ root }}/static/js/catalog.js"></script>{% endblock %}
