@@ -2,6 +2,11 @@
 
     python scripts/build.py            # build
     python scripts/build.py --serve    # build, then serve on localhost:8000
+    python scripts/build.py --vendor DIR --out DIR   # self-hosted libraries
+
+`--vendor DIR` expects DIR/pyodide (the npm "pyodide" package) and DIR/katex
+(the npm "katex" package). Their files are copied into the site so it works
+where pages may not fetch from CDNs (e.g. a claude.ai Artifact).
 
 Inputs:  content/catalog.yaml, content/algorithms/*.md, site_src/, optlab/
 Output:  _site/ (ready for GitHub Pages)
@@ -123,8 +128,38 @@ def load_catalog() -> dict:
     return cat
 
 
-def build() -> None:
-    """Render every page and copy static assets into _site/."""
+PYODIDE_FILES = ["pyodide.js", "pyodide.asm.js", "pyodide.asm.wasm",
+                 "python_stdlib.zip", "pyodide-lock.json"]
+WRAPPER_RE = re.compile(r"<!doctype html>\s*|</?html[^>]*>\s*|</?head>\s*|</?body>\s*",
+                        re.I)
+
+
+def copy_vendor(vendor: Path, out: Path) -> None:
+    """Copy Pyodide core and KaTeX (CSS, JS, woff2 fonts) into the site."""
+    pyo = out / "static" / "vendor" / "pyodide"
+    pyo.mkdir(parents=True)
+    for name in PYODIDE_FILES:
+        shutil.copy2(vendor / "pyodide" / name, pyo / name)
+    kdst = out / "static" / "vendor" / "katex"
+    ksrc = vendor / "katex" / "dist"
+    (kdst / "contrib").mkdir(parents=True)
+    (kdst / "fonts").mkdir()
+    for name in ["katex.min.css", "katex.min.js"]:
+        shutil.copy2(ksrc / name, kdst / name)
+    shutil.copy2(ksrc / "contrib" / "auto-render.min.js",
+                 kdst / "contrib" / "auto-render.min.js")
+    for font in (ksrc / "fonts").glob("*.woff2"):
+        shutil.copy2(font, kdst / "fonts" / font.name)
+
+
+def build(out: Path = OUT, vendor: Path | None = None) -> None:
+    """Render every page and copy static assets into `out`.
+
+    With `vendor`, Pyodide and KaTeX are served from the site itself and
+    the home page is emitted without its <html>/<head>/<body> wrapper (the
+    Artifact host adds its own).
+    """
+    OUT = out  # noqa: N806 - shadow the module default for this build
     if OUT.exists():
         shutil.rmtree(OUT)
     (OUT / "algorithms").mkdir(parents=True)
@@ -142,15 +177,25 @@ def build() -> None:
     cat = load_catalog()
     env = Environment(loader=FileSystemLoader(SRC / "templates"),
                       autoescape=select_autoescape(["html"]))
-    common = {"cat": cat, "pyodide_base": PYODIDE_BASE,
-              "katex_base": KATEX_BASE}
+    if vendor:
+        copy_vendor(vendor, OUT)
+    pyodide_base = "{root}/static/vendor/pyodide/" if vendor else PYODIDE_BASE
+    katex_base = "{root}/static/vendor/katex/" if vendor else KATEX_BASE
+
+    def bases(root: str) -> dict:
+        return {"pyodide_base": pyodide_base.replace("{root}", root),
+                "katex_base": katex_base.replace("{root}", root)}
+
+    common = {"cat": cat}
 
     cards = [{k: a[k] for k in ("id", "name", "en", "family", "problem",
                                  "info", "domains", "summary", "status")}
              for a in cat["algorithms"]]
-    (OUT / "index.html").write_text(env.get_template("index.html").render(
-        root=".", cards_json=to_script_json(cards),
-        **common), "utf-8")
+    index = env.get_template("index.html").render(
+        root=".", cards_json=to_script_json(cards), **bases("."), **common)
+    if vendor:
+        index = WRAPPER_RE.sub("", index)
+    (OUT / "index.html").write_text(index, "utf-8")
 
     page_tpl = env.get_template("algorithm.html")
     for a in cat["algorithms"]:
@@ -164,19 +209,19 @@ def build() -> None:
         html = html.replace("<!-- lab -->", '<div id="lab"></div>')
         html = html.replace("<!-- practice -->", '<div id="practice"></div>')
         (OUT / "algorithms" / f"{a['id']}.html").write_text(page_tpl.render(
-            root="..", a=a, meta=meta, body=html,
+            root="..", a=a, meta=meta, body=html, **bases(".."),
             lab_json=to_script_json(lab) if lab else "",
             practice_json=to_script_json(practice) if practice else "",
             **common), "utf-8")
 
     n_pages = sum(a["status"]["page"] for a in cat["algorithms"])
     print(f"built {len(cat['algorithms'])} algorithms "
-          f"({n_pages} detailed) -> {OUT.relative_to(ROOT)}/")
+          f"({n_pages} detailed) -> {OUT}/")
 
 
-def serve(port: int) -> None:
-    """Serve _site/ locally (Pyodide needs http://, not file://)."""
-    handler = partial(http.server.SimpleHTTPRequestHandler, directory=str(OUT))
+def serve(port: int, out: Path = OUT) -> None:
+    """Serve the built site locally (Pyodide needs http://, not file://)."""
+    handler = partial(http.server.SimpleHTTPRequestHandler, directory=str(out))
     print(f"serving http://localhost:{port}/  (Ctrl+C to stop)")
     http.server.ThreadingHTTPServer(("", port), handler).serve_forever()
 
@@ -185,7 +230,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--serve", action="store_true")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--out", type=Path, default=OUT)
+    parser.add_argument("--vendor", type=Path, default=None)
     args = parser.parse_args()
-    build()
+    build(args.out.resolve(), args.vendor)
     if args.serve:
-        serve(args.port)
+        serve(args.port, args.out.resolve())

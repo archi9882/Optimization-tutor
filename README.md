@@ -28,6 +28,8 @@ python scripts/build.py --serve  # 建置到 _site/ 並開在 http://localhost:8
 
 Windows 可將 `python` 換成 `py`。網站必須透過 `http://` 開啟，直接雙擊 HTML 檔時 Pyodide 無法載入。
 
+預設從 CDN 載入 Pyodide 與 KaTeX。若要離線或在不允許外部請求的環境使用，先用 npm 下載 `pyodide@0.27.7` 與 `katex@0.16.9` 兩個套件，解壓到 `DIR/pyodide`、`DIR/katex`，再執行 `python scripts/build.py --vendor DIR --out _site_offline`。
+
 ## 架構
 
 ```

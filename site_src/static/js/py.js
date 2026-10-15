@@ -25,7 +25,9 @@ function spawn() {
     ok ? p.resolve(result) : p.reject(new Error(error));
   };
   setState("loading");
-  ready = send("init", { pyodideBase: cfg.pyodideBase, root: new URL(cfg.root, location.href).href }, 120000)
+  // Absolute URLs: the worker resolves relative paths against its own script.
+  const abs = (u) => new URL(u, location.href).href;
+  ready = send("init", { pyodideBase: abs(cfg.pyodideBase), root: abs(cfg.root).replace(/\/$/, "") }, 120000)
     .then(() => setState("ready"))
     .catch((err) => { setState("error"); throw err; });
   return ready;

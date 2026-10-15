@@ -67,13 +67,28 @@ hintBtn.addEventListener("click", () => {
   hintBtn.textContent = `提示（${hintsShown}/${ex.hints.length}）`;
   hintBtn.disabled = hintsShown >= ex.hints.length;
 });
-solBtn.addEventListener("click", () => {
-  if (!confirm("先自己試試看？確定要看解答嗎？")) return;
+// Two-step confirmation inside the page (embedded viewers block confirm()).
+function confirmTwice(btn, label, confirmLabel, action) {
+  let armed = false, timer = null;
+  btn.addEventListener("click", () => {
+    if (!armed) {
+      armed = true;
+      btn.textContent = confirmLabel;
+      timer = setTimeout(() => { armed = false; btn.textContent = label; }, 4000);
+      return;
+    }
+    clearTimeout(timer);
+    armed = false;
+    btn.textContent = label;
+    action();
+  });
+}
+
+confirmTwice(solBtn, "看解答", "再按一次顯示解答", () => {
   solBox.replaceChildren(h("p", { class: "hint-text" }, "參考解答（看完建議關掉，再自己重寫一次）："),
     h("pre", { class: "solution" }, ex.solution));
 });
-resetBtn.addEventListener("click", () => {
-  if (!confirm("清除你的程式，回到初始骨架？")) return;
+confirmTwice(resetBtn, "重設", "再按一次清除程式", () => {
   editor.value = ex.skeleton;
   save(editor.value);
 });
