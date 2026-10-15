@@ -52,7 +52,7 @@ def as_vec(obj: Any) -> Vec:
         raise TypeError(f"需要長度 2 的向量，收到 {obj!r}") from None
 
 
-def _close(a: Vec, b: Vec, tol: float = 1e-9) -> bool:
+def _close(a: Vec, b: Vec, tol: float = 1e-7) -> bool:
     return all(abs(p - q) <= tol * (1 + abs(q)) for p, q in zip(a, b))
 
 

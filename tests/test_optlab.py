@@ -163,3 +163,70 @@ def test_grade_json_round_trips() -> None:
     import json
     data = json.loads(grade_json("gd", EXERCISES["gd"].solution))
     assert data["passed"] and data["user_trace"]["xs"]
+
+
+@pytest.mark.parametrize("ex_id", list(EXERCISES))
+def test_exercise_reference_matches_lab_optimizer(ex_id: str) -> None:
+    """Practice reference and the animated optimizer give identical traces."""
+    ex = EXERCISES[ex_id]
+    prob = make_problem(ex.demo["problem"], **ex.demo.get("problem_params", {}))
+    params = OPTIMIZERS[ex_id].defaults() | ex.demo["params"]
+    a = run(ex.adapter(ex.reference), prob, prob.x0, params, 100)
+    b = run(OPTIMIZERS[ex_id].step, prob, prob.x0, params, 100)
+    assert a["xs"] == b["xs"]
+
+
+def test_sgd_is_reproducible_and_decay_helps() -> None:
+    """Same seed -> same path; decaying lr ends closer than constant lr."""
+    base = {"lr": 0.15, "sigma": 1.0, "seed": 0}
+    a = run_named("sgd", "quadratic", {"kappa": 10}, base | {"decay": 0.0}, n_iter=400)
+    b = run_named("sgd", "quadratic", {"kappa": 10}, base | {"decay": 0.0}, n_iter=400)
+    assert a["xs"] == b["xs"]
+    c = run_named("sgd", "quadratic", {"kappa": 10}, base | {"decay": 0.05}, n_iter=400)
+    tail = lambda t: sum(t["fs"][-100:]) / 100  # noqa: E731
+    assert tail(c) < tail(a)
+
+
+def test_coordinate_descent_is_exact_on_axis_aligned_quadratic() -> None:
+    """With omega = 1 and no coupling, two coordinate steps hit the minimum."""
+    out = run_named("coordinate", "quadratic", {"kappa": 10, "theta_deg": 0},
+                    {"omega": 1.0}, n_iter=10)
+    assert out["status"] == "converged" and out["n_iter"] == 2
+
+
+def test_sor_beats_gauss_seidel_on_coupled_quadratic() -> None:
+    """Over-relaxation (omega = 1.5) needs fewer sweeps than omega = 1."""
+    def steps(omega: float) -> int:
+        out = run_named("coordinate", "quadratic",
+                        {"kappa": 50, "theta_deg": 30}, {"omega": omega},
+                        n_iter=2000)
+        return next(i for i, f in enumerate(out["fs"]) if f < 1e-10)
+    assert steps(1.5) < steps(1.0)
+
+
+def test_nesterov_gradient_is_taken_at_look_ahead_point() -> None:
+    """Nesterov differs from heavy ball once velocity is non-zero."""
+    p = {"lr": 0.05, "beta": 0.8}
+    hb = run_named("momentum", "quadratic", {"kappa": 10}, p, n_iter=5)
+    nag = run_named("nesterov", "quadratic", {"kappa": 10}, p, n_iter=5)
+    assert hb["xs"][1] == nag["xs"][1]   # v = 0 on the first step
+    assert hb["xs"][2] != nag["xs"][2]
+
+
+@pytest.mark.parametrize("algo,lr", [("adam", 0.1), ("adagrad", 0.5)])
+def test_adaptive_methods_are_not_rotation_invariant(algo: str, lr: float) -> None:
+    """Per-coordinate scaling helps on axis-aligned valleys, not rotated ones."""
+    def final_f(theta: float) -> float:
+        return run_named(algo, "quadratic", {"kappa": 10, "theta_deg": theta},
+                         {"lr": lr}, n_iter=300)["fs"][-1]
+    assert final_f(0) * 100 < final_f(45)
+
+
+def test_gd_is_rotation_invariant() -> None:
+    """GD's f-trajectory does not depend on how the valley is rotated."""
+    a = run_named("gd", "quadratic", {"kappa": 10, "theta_deg": 0}, {"lr": 0.1}, n_iter=50)
+    b = run_named("gd", "quadratic", {"kappa": 10, "theta_deg": 45}, {"lr": 0.1}, n_iter=50)
+    # Same start point is not rotated with the valley, so compare rates instead.
+    ra = (a["fs"][-1] / a["fs"][-11]) ** 0.1
+    rb = (b["fs"][-1] / b["fs"][-11]) ** 0.1
+    assert ra == pytest.approx(rb, rel=1e-6)

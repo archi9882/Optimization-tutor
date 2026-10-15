@@ -10,6 +10,7 @@ renderer can animate all of them:
 from __future__ import annotations
 
 import math
+import random
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -49,6 +50,41 @@ def gd_step(x: Vec, problem: Problem, state: dict, p: dict) -> tuple[Vec, dict]:
     """x <- x - lr * grad f(x)."""
     g = problem.grad(x)
     return (x[0] - p["lr"] * g[0], x[1] - p["lr"] * g[1]), state
+
+
+def sgd_step(x: Vec, problem: Problem, state: dict, p: dict) -> tuple[Vec, dict]:
+    """GD on a noisy gradient g + sigma * N(0, I), with lr_k = lr / (1 + decay k).
+
+    The additive Gaussian noise stands in for the error of a mini-batch
+    gradient estimate. The generator is seeded so every run is reproducible.
+    """
+    rng = state.get("rng") or random.Random(int(p.get("seed", 0)))
+    k = state.get("k", 0)
+    g = problem.grad(x)
+    g = (g[0] + p["sigma"] * rng.gauss(0.0, 1.0),
+         g[1] + p["sigma"] * rng.gauss(0.0, 1.0))
+    lr = p["lr"] / (1.0 + p["decay"] * k)
+    return (x[0] - lr * g[0], x[1] - lr * g[1]), {"rng": rng, "k": k + 1}
+
+
+def coordinate_curvature(problem: Problem, x: Vec, i: int) -> float:
+    """|d^2 f / dx_i^2| floored at 1e-2, used as the coordinate step scale."""
+    return max(abs(problem.hess(x)[i][i]), 1e-2)
+
+
+def coordinate_step(x: Vec, problem: Problem, state: dict,
+                    p: dict) -> tuple[Vec, dict]:
+    """Cyclic coordinate descent, one coordinate per iteration.
+
+    x_i <- x_i - omega * g_i / H_ii. On a quadratic this is exact line
+    minimisation along e_i (omega = 1, Gauss-Seidel) or SOR (omega != 1).
+    """
+    k = state.get("k", 0)
+    i = k % 2
+    g = problem.grad(x)[i]
+    step = p["omega"] * g / coordinate_curvature(problem, x, i)
+    x_new = (x[0] - step, x[1]) if i == 0 else (x[0], x[1] - step)
+    return x_new, {"k": k + 1}
 
 
 def momentum_step(x: Vec, problem: Problem, state: dict,
@@ -117,6 +153,14 @@ OPTIMIZERS: dict[str, Optimizer] = {
     o.id: o for o in [
         Optimizer("gd", "GD", [Param("lr", 0.05, 1e-4, 1.0, True, _LR)],
                   gd_step),
+        Optimizer("sgd", "SGD",
+                  [Param("lr", 0.05, 1e-4, 1.0, True, _LR),
+                   Param("sigma", 1.0, 0.0, 5.0, False, "梯度雜訊 σ"),
+                   Param("decay", 0.0, 0.0, 0.2, False, "衰減 c")],
+                  sgd_step),
+        Optimizer("coordinate", "座標下降",
+                  [Param("omega", 1.0, 0.05, 1.95, False, "鬆弛係數 ω")],
+                  coordinate_step),
         Optimizer("momentum", "Momentum",
                   [Param("lr", 0.05, 1e-4, 1.0, True, _LR),
                    Param("beta", 0.8, 0.0, 0.99, False, "動量 β")],
@@ -129,7 +173,7 @@ OPTIMIZERS: dict[str, Optimizer] = {
                   [Param("lr", 0.5, 1e-3, 2.0, True, _LR)], adagrad_step),
         Optimizer("rmsprop", "RMSProp",
                   [Param("lr", 0.05, 1e-4, 1.0, True, _LR),
-                   Param("rho", 0.9, 0.5, 0.999, False, "衰減 ρ")],
+                   Param("rho", 0.99, 0.5, 0.999, False, "衰減 ρ")],
                   rmsprop_step),
         Optimizer("adam", "Adam",
                   [Param("lr", 0.1, 1e-4, 1.0, True, _LR),

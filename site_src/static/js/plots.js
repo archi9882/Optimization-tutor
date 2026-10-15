@@ -284,7 +284,7 @@ export class ConvergencePlot {
     this.draw();
   }
 
-  get pad() { return { l: 46, r: 12, t: 12, b: 26 }; }
+  get pad() { return { l: 46, r: 12, t: 12, b: 40 }; }
   px(k) { const p = this.pad; return p.l + (k / this.nMax) * (this.w - p.l - p.r); }
   py(v) {
     const p = this.pad;
@@ -315,8 +315,8 @@ export class ConvergencePlot {
     for (let k = 0; k <= this.nMax; k += stepX) c.fillText(String(k), this.px(k), this.height - p.b + 6);
     c.strokeStyle = css("--axis");
     c.beginPath(); c.moveTo(p.l, this.height - p.b); c.lineTo(this.w - p.r, this.height - p.b); c.stroke();
-    c.textAlign = "right"; c.textBaseline = "bottom";
-    c.fillText("迭代 k →", this.w - p.r, this.height - p.b - 4);
+    c.textAlign = "center"; c.textBaseline = "bottom";
+    c.fillText("迭代次數 k", p.l + (this.w - p.l - p.r) / 2, this.height - 2);
 
     for (const s of this.series) {
       const n = Math.min(s.fs.length, this.frame + 1);
