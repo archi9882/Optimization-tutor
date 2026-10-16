@@ -8,6 +8,7 @@ export const seriesColor = (i) => css(`--s${(i % 8) + 1}`);
 
 function fmt(v) {
   if (!Number.isFinite(v)) return String(v);
+  if (v === 0) return "0";
   const a = Math.abs(v);
   if (a !== 0 && (a < 1e-3 || a >= 1e5)) return v.toExponential(2);
   return v.toFixed(a < 1 ? 4 : a < 100 ? 3 : 1);
@@ -186,6 +187,19 @@ export class ContourPlot {
       const [sx0, sy0] = this.toPx(...s.xs[0]);
       c.fillStyle = surface; c.beginPath(); c.arc(sx0, sy0, 4, 0, 7); c.fill();
       c.lineWidth = 2; c.stroke();
+      if (!s.dash && s.radius && n - 1 < s.radius.length) {
+        // Trust region used for the next step, drawn around the current point.
+        const [cx, cy] = this.toPx(...s.xs[n - 1]);
+        const [x0, x1] = this.grid.bounds;
+        c.save();
+        c.setLineDash([4, 4]);
+        c.lineWidth = 1.5;
+        c.globalAlpha = 0.9;
+        c.beginPath();
+        c.arc(cx, cy, (s.radius[n - 1] * this.w) / (x1 - x0), 0, 2 * Math.PI);
+        c.stroke();
+        c.restore();
+      }
       if (!s.dash) {
         const [px, py] = this.toPx(...s.xs[n - 1]);
         const ended = n === s.xs.length;

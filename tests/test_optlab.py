@@ -263,3 +263,69 @@ def test_every_demo_has_pseudocode() -> None:
     from optlab import demos
     for demo_id, mod in demos.MODULES.items():
         assert mod.PSEUDOCODE.strip(), demo_id
+
+
+# ---------- second-order family ----------
+
+@pytest.mark.parametrize("algo", ["newton", "gauss_newton"])
+def test_newton_type_methods_solve_a_quadratic_in_one_step(algo: str) -> None:
+    """The quadratic model is exact, so one full step lands on the minimum."""
+    out = run_named(algo, "quadratic", {"kappa": 50, "theta_deg": 30}, n_iter=5)
+    assert out["n_iter"] == 1 and out["fs"][-1] < 1e-20
+
+
+def test_newton_converges_to_a_maximum_on_himmelblau() -> None:
+    """Newton seeks grad f = 0, not a minimum: from (-0.5,-0.5) it finds the local max."""
+    out = run_named("newton", "himmelblau", n_iter=50)
+    prob = make_problem("himmelblau")
+    x = tuple(out["xs"][-1])
+    assert out["status"] == "converged"
+    assert x == pytest.approx((-0.270845, -0.923039), abs=1e-5)
+    (h11, h12), (_, h22) = prob.hess(x)
+    assert h11 < 0 and h11 * h22 - h12 * h12 > 0      # negative definite
+
+
+def test_gauss_newton_stalls_where_lm_succeeds() -> None:
+    """J is singular at Himmelblau's (-0.5, -0.5); LM's lambda*I fixes it."""
+    gn = run_named("gauss_newton", "himmelblau", n_iter=50)
+    assert all(x == [-0.5, -0.5] for x in gn["xs"])
+    lm = run_named("lm", "himmelblau", n_iter=50)
+    assert lm["status"] == "converged" and lm["fs"][-1] < 1e-20
+
+
+def test_bfgs_update_satisfies_the_secant_equation() -> None:
+    """After an update, H_new @ y == s exactly (up to rounding)."""
+    from optlab.demos.bfgs import bfgs_step
+    prob = make_problem("rosenbrock")
+    x0 = (-1.5, 2.5)
+    x1, H = bfgs_step(x0, [[1.0, 0.0], [0.0, 1.0]], prob.f, prob.grad)
+    s = (x1[0] - x0[0], x1[1] - x0[1])
+    g0, g1 = prob.grad(x0), prob.grad(x1)
+    y = (g1[0] - g0[0], g1[1] - g0[1])
+    Hy = (H[0][0] * y[0] + H[0][1] * y[1], H[1][0] * y[0] + H[1][1] * y[1])
+    assert Hy == pytest.approx(s, rel=1e-9, abs=1e-12)
+
+
+def test_conjugate_gradient_finishes_a_2d_quadratic_in_two_steps() -> None:
+    """With exact line search, CG minimises an n-dim quadratic in n steps."""
+    out = run_named("ncg", "quadratic", {"kappa": 50, "theta_deg": 30}, n_iter=10)
+    assert out["fs"][2] < 1e-15
+
+
+def test_lbfgs_memory_matters_on_an_ill_conditioned_bowl() -> None:
+    """m = 1 throws away curvature information and needs many more steps."""
+    def steps(m: int) -> int:
+        out = run_named("lbfgs", "quadratic", {"kappa": 10}, {"m": m}, n_iter=500)
+        return next(i for i, f in enumerate(out["fs"]) if f < 1e-10)
+    assert steps(5) * 2 < steps(1)
+
+
+def test_trust_region_records_radii_and_rejects_bad_steps() -> None:
+    """Each step reports its radius; a rejected step leaves x unchanged."""
+    from optlab.demos.trust_region import dogleg_step
+    prob = make_problem("rosenbrock")
+    x, r = dogleg_step((0.0, 0.0), 1.0, prob.f, prob.grad, prob.hess)
+    assert x == (0.0, 0.0) and r == 0.25
+    out = run_named("trust_region", "rosenbrock", n_iter=200)
+    assert out["status"] == "converged"
+    assert len(out["radius"]) == out["n_iter"] and min(out["radius"]) > 0

@@ -25,6 +25,9 @@ class Problem:
     minima: list[Vec] = field(default_factory=list)
     fstar: float = 0.0
     note: str = ""
+    # Least-squares form f(x) = sum_i r_i(x)^2, for Gauss-Newton / LM.
+    residuals: Callable[[Vec], tuple[float, ...]] | None = None
+    jac: Callable[[Vec], tuple[Vec, ...]] | None = None  # rows = dr_i/dx
 
 
 def quadratic(kappa: float = 10.0, theta_deg: float = 0.0) -> Problem:
@@ -48,10 +51,22 @@ def quadratic(kappa: float = 10.0, theta_deg: float = 0.0) -> Problem:
     def hess(x: Vec) -> tuple[Vec, Vec]:
         return ((a11, a12), (a12, a22))
 
+    # Square root S = A^(1/2), so f = |S x|^2 / 2 = sum r_i^2 with r = S x / sqrt 2.
+    rk = math.sqrt(kappa)
+    s11 = (c * c + rk * s * s) / math.sqrt(2)
+    s22 = (s * s + rk * c * c) / math.sqrt(2)
+    s12 = (1.0 - rk) * c * s / math.sqrt(2)
+
+    def residuals(x: Vec) -> tuple[float, float]:
+        return (s11 * x[0] + s12 * x[1], s12 * x[0] + s22 * x[1])
+
+    def jac(x: Vec) -> tuple[Vec, Vec]:
+        return ((s11, s12), (s12, s22))
+
     return Problem(
         id="quadratic",
         name=f"二次碗 (κ={kappa:g})",
-        f=f, grad=grad, hess=hess,
+        f=f, grad=grad, hess=hess, residuals=residuals, jac=jac,
         bounds=(-5.0, 5.0, -3.0, 3.0),
         x0=(-4.5, 2.0),
         minima=[(0.0, 0.0)],
@@ -75,10 +90,18 @@ def rosenbrock(a: float = 1.0, b: float = 100.0) -> Problem:
         h12 = -4 * b * x[0]
         return ((h11, h12), (h12, 2 * b))
 
+    sb = math.sqrt(b)
+
+    def residuals(x: Vec) -> tuple[float, float]:
+        return (a - x[0], sb * (x[1] - x[0] ** 2))
+
+    def jac(x: Vec) -> tuple[Vec, Vec]:
+        return ((-1.0, 0.0), (-2 * sb * x[0], sb))
+
     return Problem(
         id="rosenbrock",
         name="Rosenbrock 香蕉谷",
-        f=f, grad=grad, hess=hess,
+        f=f, grad=grad, hess=hess, residuals=residuals, jac=jac,
         bounds=(-2.0, 2.0, -1.0, 3.0),
         x0=(-1.5, 2.5),
         minima=[(a, a * a)],
@@ -104,10 +127,16 @@ def himmelblau() -> Problem:
         h22 = 4 * x[0] + 12 * x[1] ** 2 - 26
         return ((h11, h12), (h12, h22))
 
+    def residuals(x: Vec) -> tuple[float, float]:
+        return (x[0] ** 2 + x[1] - 11, x[0] + x[1] ** 2 - 7)
+
+    def jac(x: Vec) -> tuple[Vec, Vec]:
+        return ((2 * x[0], 1.0), (1.0, 2 * x[1]))
+
     return Problem(
         id="himmelblau",
         name="Himmelblau 四谷",
-        f=f, grad=grad, hess=hess,
+        f=f, grad=grad, hess=hess, residuals=residuals, jac=jac,
         bounds=(-5.0, 5.0, -5.0, 5.0),
         x0=(-0.5, -0.5),
         minima=[(3.0, 2.0), (-2.805118, 3.131312),

@@ -133,7 +133,7 @@ function describe(t) {
 function visibleSeries() {
   return data.algos.map((id, i) => ({ id, i, t: st.traces.find((t) => t.algo === id) }))
     .filter((s) => s.t && st.enabled.has(s.id))
-    .map((s) => ({ xs: s.t.xs, fs: s.t.fs, status: s.t.status, label: data.optimizers[s.id].name, color: seriesColor(s.i) }));
+    .map((s) => ({ xs: s.t.xs, fs: s.t.fs, status: s.t.status, radius: s.t.radius, label: data.optimizers[s.id].name, color: seriesColor(s.i) }));
 }
 
 function maxLen() { return Math.max(1, ...visibleSeries().map((s) => s.xs.length)); }

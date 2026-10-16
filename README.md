@@ -13,9 +13,9 @@
 | 項目 | 狀態 |
 |---|---|
 | 目錄（59 種，含篩選與搜尋） | ✅ |
-| 渲染器 ①：2D 等高線 + 路徑 + 收斂曲線 | ✅ |
-| 完整頁面 | 一階方法全家族 8 頁：GD、SGD、動量法、Nesterov、AdaGrad、RMSProp、Adam、座標下降（AI 草稿，待作者審閱） |
-| 程式與練習 | 8 種演算法各有虛擬碼、示範程式與挖空練習（另可切換成從零寫） |
+| 渲染器 ①：2D 等高線 + 路徑 + 收斂曲線（含信賴域半徑） | ✅ |
+| 完整頁面 | 15 頁（AI 草稿，待作者審閱）<br>一階方法 8 頁：GD、SGD、動量法、Nesterov、AdaGrad、RMSProp、Adam、座標下降<br>二階與擬牛頓 7 頁：牛頓法、高斯-牛頓、Levenberg-Marquardt、BFGS、L-BFGS、非線性 CG、信賴域法 |
+| 程式與練習 | 15 種演算法各有虛擬碼、示範程式與挖空練習（另可切換成從零寫） |
 | 渲染器 ②～⑤（多面體、族群、Pareto、圖/表格） | 尚未開始 |
 
 ## 快速開始
@@ -34,9 +34,9 @@ Windows 可將 `python` 換成 `py`。網站必須透過 `http://` 開啟，直�
 
 ```
 optlab/            參考實作（純 Python、無 numpy，CPython 與 Pyodide 共用）
-  problems.py      測試問題：二次碗（可調 κ 與旋轉）、Rosenbrock、Himmelblau
+  problems.py      測試問題：二次碗（可調 κ 與旋轉）、Rosenbrock、Himmelblau（含殘差形式）
   demos/           每種演算法一個檔案：虛擬碼 + 示範函式（頁面顯示的程式＝動畫執行的程式）
-  first_order.py   動畫用的優化器清單與參數範圍，step 函式直接取自 demos/
+  optimizers.py    動畫用的優化器清單與參數範圍，step 函式直接取自 demos/
   trace.py         執行器：產生軌跡 {xs, fs, status}
   grading.py       三層評分：單步數值 → 收斂行為 → 軌跡重合
   exercises/       每題的骨架、提示、解答與測資
@@ -84,6 +84,11 @@ tests/             pytest
 | Adam | 部分影像任務上 SGD + 動量泛化較好的實證報告 |
 | SGD | Robbins–Monro 學習率條件 |
 | 座標下降 | SOR 對對稱正定矩陣在 0 < ω < 2 時收斂 |
+| 牛頓法 | 局部二次收斂的條件（Hessian 正定且 Lipschitz 連續） |
+| 高斯-牛頓 | 地震定位的 Geiger 法屬於高斯-牛頓迭代 |
+| Levenberg-Marquardt | 水文模式參數校準軟體普遍採用 LM 類方法 |
+| BFGS | 強凸與 Wolfe 線搜尋下的超線性收斂 |
+| 信賴域法 | 全域收斂保證與接近解時的二次收斂 |
 
 ## 第三方資源
 

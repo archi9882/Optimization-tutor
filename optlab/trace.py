@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import math
 
-from .first_order import OPTIMIZERS, StepFn
+from .optimizers import OPTIMIZERS, StepFn
 from .problems import Problem, Vec, make_problem
 
 DIVERGE_AT = 1e6
@@ -21,8 +21,11 @@ def run(step: StepFn, problem: Problem, x0: Vec, params: dict,
     xs = [list(x)]
     fs = [problem.f(x)]
     status = "max_iter"
+    radii: list[float] = []             # trust-region radius used at each step
     for _ in range(n_iter):
         x, state = step(x, problem, state, params)
+        if "radius_used" in state:
+            radii.append(state["radius_used"])
         x = (float(x[0]), float(x[1]))
         if not all(math.isfinite(v) and abs(v) < DIVERGE_AT for v in x):
             status = "diverged"
@@ -33,7 +36,10 @@ def run(step: StepFn, problem: Problem, x0: Vec, params: dict,
         if math.hypot(g[0], g[1]) < tol:
             status = "converged"
             break
-    return {"xs": xs, "fs": fs, "status": status, "n_iter": len(xs) - 1}
+    out = {"xs": xs, "fs": fs, "status": status, "n_iter": len(xs) - 1}
+    if radii:
+        out["radius"] = radii
+    return out
 
 
 def run_named(algo_id: str, problem_id: str, problem_params: dict | None = None,

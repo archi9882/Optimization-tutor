@@ -2,7 +2,7 @@
 
 Each module defines one learner-style step function (FUNC), its pseudocode,
 and an `adapter` that plugs the function into the shared lab loop. The lab's
-optimizers in optlab.first_order are built from these, so the animation runs
+optimizers in optlab.optimizers are built from these, so the animation runs
 precisely the code the page displays.
 """
 from __future__ import annotations
@@ -10,19 +10,31 @@ from __future__ import annotations
 import inspect
 from types import ModuleType
 
-from . import adagrad, adam, coordinate, gd, momentum, nesterov, rmsprop, sgd
+from . import (adagrad, adam, bfgs, coordinate, gauss_newton, gd, lbfgs, lm,
+               momentum, ncg, nesterov, newton, rmsprop, sgd, trust_region)
 
 MODULES: dict[str, ModuleType] = {
     "gd": gd, "sgd": sgd, "momentum": momentum, "nesterov": nesterov,
     "adagrad": adagrad, "rmsprop": rmsprop, "adam": adam,
     "coordinate": coordinate,
+    "newton": newton, "gauss_newton": gauss_newton, "lm": lm, "bfgs": bfgs,
+    "lbfgs": lbfgs, "ncg": ncg, "trust_region": trust_region,
 }
 
 
 def source(demo_id: str) -> str:
-    """Display source: needed imports plus the step function's own code."""
+    """Display source: imports, helper functions, then the step function."""
     mod = MODULES[demo_id]
-    return mod.HEADER + inspect.getsource(mod.FUNC)
+    parts = [inspect.getsource(h) for h in getattr(mod, "HELPERS", [])]
+    parts.append(inspect.getsource(mod.FUNC))
+    return mod.HEADER + "\n\n".join(parts)
+
+
+def helpers_source(demo_id: str) -> str:
+    """Imports plus helper functions only (given to learners in the skeleton)."""
+    mod = MODULES[demo_id]
+    parts = [inspect.getsource(h) for h in getattr(mod, "HELPERS", [])]
+    return mod.HEADER + "".join(p + "\n\n" for p in parts)
 
 
 def lab_step(demo_id: str):

@@ -1,4 +1,4 @@
-"""First-order optimizers (the gradient-descent family) for the lab.
+"""Registry of every optimizer the lab can animate.
 
 Every optimizer shares one signature so a single runner and a single
 renderer can animate all of them:
@@ -78,5 +78,23 @@ OPTIMIZERS: dict[str, Optimizer] = {
                    Param("beta1", 0.9, 0.0, 0.999, False, "β₁"),
                    Param("beta2", 0.999, 0.9, 0.9999, False, "β₂")],
                   lab_step("adam")),
+        # ---- second-order and quasi-Newton ----
+        Optimizer("newton", "Newton",
+                  [Param("alpha", 1.0, 0.05, 1.0, False, "步長 α")],
+                  lab_step("newton")),
+        Optimizer("gauss_newton", "Gauss-Newton",
+                  [Param("alpha", 1.0, 0.05, 1.0, False, "步長 α")],
+                  lab_step("gauss_newton")),
+        Optimizer("lm", "Levenberg-Marquardt",
+                  [Param("lam0", 1.0, 1e-3, 1e3, True, "初始阻尼 λ₀")],
+                  lab_step("lm")),
+        Optimizer("bfgs", "BFGS", [], lab_step("bfgs")),
+        Optimizer("lbfgs", "L-BFGS",
+                  [Param("m", 5, 1, 10, False, "記憶組數 m")],
+                  lab_step("lbfgs")),
+        Optimizer("ncg", "非線性 CG", [], lab_step("ncg")),
+        Optimizer("trust_region", "信賴域 (dogleg)",
+                  [Param("radius0", 0.5, 0.05, 3.0, True, "初始半徑 Δ₀")],
+                  lab_step("trust_region")),
     ]
 }

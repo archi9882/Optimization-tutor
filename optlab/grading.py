@@ -13,7 +13,7 @@ import traceback
 from dataclasses import dataclass
 from typing import Callable
 
-from .problems import Vec, as_vec, make_problem  # noqa: F401 (re-export)
+from .problems import make_problem
 from .trace import run
 
 
@@ -43,8 +43,27 @@ class Exercise:
     blanks: tuple[str, ...] = ()              # substrings of `solution` to hide
 
 
-def _close(a: Vec, b: Vec, tol: float = 1e-7) -> bool:
-    return all(abs(p - q) <= tol * (1 + abs(q)) for p, q in zip(a, b))
+def flatten(obj) -> list[float]:
+    """All numbers in a nested structure (tuples, lists, arrays), in order."""
+    if obj is None:
+        raise TypeError("函式回傳了 None，是不是忘了 return？")
+    if isinstance(obj, (int, float)) or (
+            hasattr(obj, "__float__") and not hasattr(obj, "__iter__")):
+        return [float(obj)]
+    try:
+        return [v for item in obj for v in flatten(item)]
+    except TypeError:
+        raise TypeError(f"無法解讀的回傳值：{obj!r}") from None
+
+
+def _fmt(obj) -> str:
+    """Compact display of a nested numeric structure."""
+    if isinstance(obj, (int, float)):
+        return f"{obj:.6g}"
+    try:
+        return "(" + ", ".join(_fmt(v) for v in obj) + ")"
+    except TypeError:
+        return repr(obj)
 
 
 def _err(exc: BaseException) -> str:
@@ -60,13 +79,12 @@ def grade(ex: Exercise, fn: Callable) -> dict:
     for case in ex.cases:
         try:
             out = fn(**case.args)
-            if len(case.expected) == 1:  # function returns a single vector
-                got = (as_vec(out),)
-            else:
-                got = tuple(as_vec(v) for v in out)
-            ok = len(got) == len(case.expected) and all(
-                _close(g, e) for g, e in zip(got, case.expected))
-            msg = "通過" if ok else f"預期 {case.expected}，得到 {got}"
+            want = case.expected[0] if len(case.expected) == 1 else case.expected
+            got_flat, want_flat = flatten(out), flatten(want)
+            ok = len(got_flat) == len(want_flat) and all(
+                abs(g - w) <= 1e-7 * (1 + abs(w))
+                for g, w in zip(got_flat, want_flat))
+            msg = "通過" if ok else f"預期 {_fmt(want)}，得到 {_fmt(out)}"
         except Exception as exc:  # learner code may raise anything
             ok, msg = False, _err(exc)
         results.append({"layer": 1, "name": case.name, "passed": ok,
