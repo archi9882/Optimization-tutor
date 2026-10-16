@@ -117,6 +117,16 @@ def himmelblau() -> Problem:
     )
 
 
+def as_vec(obj) -> Vec:
+    """Convert a length-2 sequence (tuple, list, numpy array) to floats."""
+    try:
+        if len(obj) != 2:
+            raise ValueError
+        return (float(obj[0]), float(obj[1]))
+    except (TypeError, ValueError):
+        raise TypeError(f"需要長度 2 的向量，收到 {obj!r}") from None
+
+
 def make_problem(problem_id: str, **params: float) -> Problem:
     """Build a problem from its id and optional parameters."""
     builders = {"quadratic": quadratic, "rosenbrock": rosenbrock,

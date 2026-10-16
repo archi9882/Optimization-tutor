@@ -29,7 +29,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from optlab import OPTIMIZERS, api  # noqa: E402
+from optlab import OPTIMIZERS, api, demos  # noqa: E402
 from optlab.exercises import EXERCISES  # noqa: E402
 
 CONTENT = ROOT / "content"
@@ -103,6 +103,8 @@ def practice_data(ex_id: str) -> dict:
     ex = EXERCISES[ex_id]
     return {"id": ex.id, "func": ex.func_name, "skeleton": ex.skeleton,
             "hints": ex.hints, "solution": ex.solution,
+            "blanks": list(ex.blanks),
+            "pseudocode": demos.MODULES[ex_id].PSEUDOCODE,
             "grid": api.problem_grid(ex.demo)}
 
 

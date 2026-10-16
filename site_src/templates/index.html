@@ -2,7 +2,7 @@
 {% block content %}
 <section class="hero">
   <h1>最佳化演算法圖鑑</h1>
-  <p class="lede">{{ cat.algorithms|length }} 種跨領域常用的最佳化演算法。每一種都依同一個結構整理：定義、應用場景、解決什麼問題、動畫演示，以及在瀏覽器裡從零實作的 scratch practice。</p>
+  <p class="lede">{{ cat.algorithms|length }} 種跨領域常用的最佳化演算法。每一種都依同一個結構整理：定義、應用場景、解決什麼問題、動畫演示，以及虛擬碼、示範程式與在瀏覽器裡執行的挖空練習。</p>
 </section>
 
 <section class="filters" aria-label="篩選">
@@ -38,7 +38,7 @@
           <span class="progress" aria-label="內容完成度">
             <span class="dot{% if a.status.page %} on{% endif %}" title="定義與說明"></span>
             <span class="dot{% if a.status.lab %} on{% endif %}" title="動畫演示"></span>
-            <span class="dot{% if a.status.practice %} on{% endif %}" title="Scratch practice"></span>
+            <span class="dot{% if a.status.practice %} on{% endif %}" title="程式與練習"></span>
           </span>
         </span>
       </a>
@@ -48,7 +48,7 @@
 {% endfor %}
   <p id="empty" class="empty" hidden>沒有符合條件的演算法。試著取消一些篩選。</p>
 </div>
-<p class="legend-note"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span> 三個點依序代表：說明頁、動畫、練習。</p>
+<p class="legend-note"><span class="dot on"></span><span class="dot on"></span><span class="dot on"></span> 三個點依序代表：說明頁、動畫、程式與練習。</p>
 <script type="application/json" id="cards-data">{{ cards_json|safe }}</script>
 {% endblock %}
 {% block scripts %}<script type="module" src="{{ root }}/static/js/catalog.js"></script>{% endblock %}

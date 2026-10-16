@@ -1,9 +1,9 @@
 """Exercise: an SGD step with a decaying learning rate."""
 from __future__ import annotations
 
-import random
-
-from ..grading import Exercise, StepCase, as_vec
+from .. import demos
+from ..demos import sgd as DEMO
+from ..grading import Exercise, StepCase
 
 SKELETON = '''def sgd_step(x, grad, lr0, k, decay):
     """一步帶學習率衰減的 SGD。
@@ -19,29 +19,6 @@ SKELETON = '''def sgd_step(x, grad, lr0, k, decay):
     raise NotImplementedError
 '''
 
-SOLUTION = '''def sgd_step(x, grad, lr0, k, decay):
-    lr = lr0 / (1 + decay * k)
-    return (x[0] - lr * grad[0], x[1] - lr * grad[1])
-'''
-
-
-def reference(x, grad, lr0, k, decay):
-    """Reference implementation in the learner's signature."""
-    lr = lr0 / (1 + decay * k)
-    return (x[0] - lr * grad[0], x[1] - lr * grad[1])
-
-
-def adapter(fn):
-    """Feed the learner the same seeded noisy gradient optlab's SGD uses."""
-    def step(x, problem, state, p):
-        rng = state.get("rng") or random.Random(int(p.get("seed", 0)))
-        k = state.get("k", 0)
-        g = problem.grad(x)
-        g = (g[0] + p["sigma"] * rng.gauss(0.0, 1.0),
-             g[1] + p["sigma"] * rng.gauss(0.0, 1.0))
-        return as_vec(fn(x, g, p["lr"], k, p["decay"])), {"rng": rng, "k": k + 1}
-    return step
-
 
 EXERCISE = Exercise(
     id="sgd",
@@ -52,7 +29,8 @@ EXERCISE = Exercise(
         "虛擬碼：η_k = lr0 / (1 + c·k)；x ← x − η_k · g",
         "k = 0 時 η_0 = lr0；k = 10、c = 0.1 時學習率剛好減半。",
     ],
-    solution=SOLUTION,
+    solution=demos.source("sgd"),
+    blanks=("lr0 / (1 + decay * k)", "xi - lr * gi"),
     cases=[
         StepCase("k = 0 時就是 GD",
                  {"x": (1.0, 2.0), "grad": (0.5, -1.0), "lr0": 0.1, "k": 0,
@@ -67,8 +45,8 @@ EXERCISE = Exercise(
                   "decay": 0.0},
                  ((-1.0, -2.0),)),
     ],
-    adapter=adapter,
-    reference=reference,
+    adapter=DEMO.adapter,
+    reference=DEMO.FUNC,
     demo={"problem": "quadratic", "problem_params": {"kappa": 10},
           "params": {"lr": 0.15, "sigma": 1.0, "decay": 0.05, "seed": 0},
           "n_iter": 300},

@@ -217,8 +217,40 @@ button { font: inherit; color: inherit; }
 .verdict.fail { color: var(--bad); }
 .solution { background: var(--page); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 13px; overflow-x: auto; }
 
+/* ---------- code folds ---------- */
+.folds { display: flex; flex-direction: column; gap: 12px; margin: 16px 0; }
+.fold, .prose details.fold { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0; margin: 0; }
+.fold > summary {
+  cursor: pointer; padding: 12px 16px; font-weight: 650; color: var(--ink);
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; list-style: none;
+}
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::before { content: "▸"; color: var(--accent); transition: transform .15s; display: inline-block; }
+.fold[open] > summary::before { transform: rotate(90deg); }
+.fold > summary small { font-weight: 400; font-size: 13px; color: var(--muted); }
+.fold-body { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.fold-body h4 { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); letter-spacing: .02em; }
+.pseudo, .code, .cloze {
+  margin: 0; padding: 12px 14px; border-radius: 8px; font-family: var(--mono); font-size: 13.5px; line-height: 1.6;
+  background: var(--page); border: 1px solid var(--grid); overflow-x: auto; white-space: pre; color: var(--ink); tab-size: 4;
+}
+.pseudo { font-family: var(--font); font-size: 14px; }
+.c-com, .c-doc { color: var(--muted); }
+.blank {
+  font: inherit; color: var(--ink); background: var(--surface); padding: 1px 4px; margin: 0 1px;
+  border: 1px solid var(--axis); border-bottom: 2px solid var(--accent); border-radius: 4px; max-width: 70vw;
+}
+.blank:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.blank.revealed { border-bottom-color: var(--muted); color: var(--ink-2); }
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; align-self: flex-start; }
+.seg { border: 0; background: var(--page); padding: 5px 14px; font-size: 14px; cursor: pointer; color: var(--ink-2); }
+.seg + .seg { border-left: 1px solid var(--border); }
+.seg[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.practice-main, .practice-grid > div { min-width: 0; }
+
 @media (max-width: 760px) {
   .lab-plots, .practice-grid { grid-template-columns: 1fr; }
+  .code, .cloze { font-size: 12px; padding: 10px; }
   .chip-label { width: 100%; }
   .slider input[type="range"] { width: 110px; }
   .algo-result { margin-left: 0; width: 100%; }

@@ -1,8 +1,9 @@
 """Exercise: one cyclic coordinate-descent (Gauss-Seidel / SOR) step."""
 from __future__ import annotations
 
-from ..first_order import coordinate_curvature
-from ..grading import Exercise, StepCase, as_vec
+from .. import demos
+from ..demos import coordinate as DEMO
+from ..grading import Exercise, StepCase
 
 SKELETON = '''def coordinate_step(x, grad, curv, omega, i):
     """一步循環座標下降：只更新第 i 個座標。
@@ -17,30 +18,6 @@ SKELETON = '''def coordinate_step(x, grad, curv, omega, i):
     raise NotImplementedError
 '''
 
-SOLUTION = '''def coordinate_step(x, grad, curv, omega, i):
-    x_new = list(x)
-    x_new[i] = x[i] - omega * grad[i] / curv[i]
-    return tuple(x_new)
-'''
-
-
-def reference(x, grad, curv, omega, i):
-    """Reference implementation in the learner's signature."""
-    x_new = list(x)
-    x_new[i] = x[i] - omega * grad[i] / curv[i]
-    return tuple(x_new)
-
-
-def adapter(fn):
-    """Cycle i = 0, 1, 0, 1, ... exactly like optlab's coordinate descent."""
-    def step(x, problem, state, p):
-        k = state.get("k", 0)
-        curv = (coordinate_curvature(problem, x, 0),
-                coordinate_curvature(problem, x, 1))
-        x_new = fn(x, problem.grad(x), curv, p["omega"], k % 2)
-        return as_vec(x_new), {"k": k + 1}
-    return step
-
 
 EXERCISE = Exercise(
     id="coordinate",
@@ -51,7 +28,8 @@ EXERCISE = Exercise(
         "虛擬碼：x_i ← x_i − ω · g_i / curv_i，另一個分量原封不動。",
         "tuple 不能改值：先 x_new = list(x)，改完 x_new[i] 再 tuple(x_new)。",
     ],
-    solution=SOLUTION,
+    solution=demos.source("coordinate"),
+    blanks=("x[i] - omega * grad[i] / curv[i]",),
     cases=[
         StepCase("更新第 0 個座標",
                  {"x": (2.0, 3.0), "grad": (4.0, 6.0), "curv": (2.0, 3.0),
@@ -66,8 +44,8 @@ EXERCISE = Exercise(
                   "omega": 1.5, "i": 0},
                  ((0.25, 1.0),)),
     ],
-    adapter=adapter,
-    reference=reference,
+    adapter=DEMO.adapter,
+    reference=DEMO.FUNC,
     demo={"problem": "quadratic",
           "problem_params": {"kappa": 10, "theta_deg": 30},
           "params": {"omega": 1.0}, "n_iter": 300},

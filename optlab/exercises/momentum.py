@@ -1,7 +1,9 @@
 """Exercise: one heavy-ball momentum step (PyTorch convention)."""
 from __future__ import annotations
 
-from ..grading import Exercise, StepCase, as_vec
+from .. import demos
+from ..demos import momentum as DEMO
+from ..grading import Exercise, StepCase
 
 SKELETON = '''def momentum_step(x, v, grad, lr, beta):
     """一步 heavy-ball 動量（PyTorch 慣例）。
@@ -15,27 +17,6 @@ SKELETON = '''def momentum_step(x, v, grad, lr, beta):
     raise NotImplementedError
 '''
 
-SOLUTION = '''def momentum_step(x, v, grad, lr, beta):
-    v_new = (beta * v[0] + grad[0], beta * v[1] + grad[1])
-    x_new = (x[0] - lr * v_new[0], x[1] - lr * v_new[1])
-    return x_new, v_new
-'''
-
-
-def reference(x, v, grad, lr, beta):
-    """Reference implementation in the learner's signature."""
-    v_new = (beta * v[0] + grad[0], beta * v[1] + grad[1])
-    return (x[0] - lr * v_new[0], x[1] - lr * v_new[1]), v_new
-
-
-def adapter(fn):
-    """Wrap a learner-style momentum_step into the shared StepFn signature."""
-    def step(x, problem, state, p):
-        v = state.get("v", (0.0, 0.0))
-        x_new, v_new = fn(x, v, problem.grad(x), p["lr"], p["beta"])
-        return as_vec(x_new), {"v": as_vec(v_new)}
-    return step
-
 
 EXERCISE = Exercise(
     id="momentum",
@@ -46,7 +27,8 @@ EXERCISE = Exercise(
         "虛擬碼：v ← β·v + ∇f(x)；x ← x − η·v",
         "第一個分量的速度：beta * v[0] + grad[0]",
     ],
-    solution=SOLUTION,
+    solution=demos.source("momentum"),
+    blanks=("beta * vi + gi", "xi - lr * vi"),
     cases=[
         StepCase("第一步（v = 0）",
                  {"x": (1.0, 2.0), "v": (0.0, 0.0), "grad": (0.5, -1.0),
@@ -65,8 +47,8 @@ EXERCISE = Exercise(
                   "lr": 0.1, "beta": 0.9},
                  ((-0.09, -0.18), (0.9, 1.8))),
     ],
-    adapter=adapter,
-    reference=reference,
+    adapter=DEMO.adapter,
+    reference=DEMO.FUNC,
     demo={"problem": "quadratic", "problem_params": {"kappa": 10},
           "params": {"lr": 0.05, "beta": 0.8}, "n_iter": 300},
 )

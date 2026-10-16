@@ -1,9 +1,9 @@
 """Exercise: one AdaGrad step."""
 from __future__ import annotations
 
-import math
-
-from ..grading import Exercise, StepCase, as_vec
+from .. import demos
+from ..demos import adagrad as DEMO
+from ..grading import Exercise, StepCase
 
 SKELETON = '''import math
 
@@ -20,31 +20,6 @@ def adagrad_step(x, s, grad, lr, eps=1e-8):
     raise NotImplementedError
 '''
 
-SOLUTION = '''import math
-
-def adagrad_step(x, s, grad, lr, eps=1e-8):
-    s_new = (s[0] + grad[0] ** 2, s[1] + grad[1] ** 2)
-    x_new = (x[0] - lr * grad[0] / (math.sqrt(s_new[0]) + eps),
-             x[1] - lr * grad[1] / (math.sqrt(s_new[1]) + eps))
-    return x_new, s_new
-'''
-
-
-def reference(x, s, grad, lr, eps=1e-8):
-    """Reference implementation in the learner's signature."""
-    s_new = (s[0] + grad[0] ** 2, s[1] + grad[1] ** 2)
-    return (x[0] - lr * grad[0] / (math.sqrt(s_new[0]) + eps),
-            x[1] - lr * grad[1] / (math.sqrt(s_new[1]) + eps)), s_new
-
-
-def adapter(fn):
-    """Wrap a learner-style adagrad_step into the shared StepFn signature."""
-    def step(x, problem, state, p):
-        s = state.get("s", (0.0, 0.0))
-        x_new, s_new = fn(x, s, problem.grad(x), p["lr"])
-        return as_vec(x_new), {"s": as_vec(s_new)}
-    return step
-
 
 EXERCISE = Exercise(
     id="adagrad",
@@ -55,7 +30,8 @@ EXERCISE = Exercise(
         "虛擬碼：s ← s + g²（逐分量）；x ← x − η · g / (√s + ε)",
         "第一個分量：x[0] - lr * grad[0] / (math.sqrt(s_new[0]) + eps)",
     ],
-    solution=SOLUTION,
+    solution=demos.source("adagrad"),
+    blanks=("si + gi ** 2", "math.sqrt(si) + eps"),
     cases=[
         StepCase("第一步：每個座標都走 η",
                  {"x": (1.0, 1.0), "s": (0.0, 0.0), "grad": (2.0, -0.5),
@@ -70,8 +46,8 @@ EXERCISE = Exercise(
                   "lr": 0.5},
                  ((1.0, 2.0), (1.0, 1.0))),
     ],
-    adapter=adapter,
-    reference=reference,
+    adapter=DEMO.adapter,
+    reference=DEMO.FUNC,
     demo={"problem": "quadratic", "problem_params": {"kappa": 10},
           "params": {"lr": 0.5}, "n_iter": 300},
     converge_below=1e-6,

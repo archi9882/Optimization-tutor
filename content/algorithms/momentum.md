@@ -97,7 +97,7 @@ $$
 3. 把 $\beta$ 調到 0，並把 $\eta$ 調成和 GD 一樣：兩條軌跡完全重合。
 4. 打開 Nesterov：它在轉彎前「先看一步」，過衝通常比較小。
 
-## Scratch practice
+## 程式與練習
 
 <!-- practice -->
 

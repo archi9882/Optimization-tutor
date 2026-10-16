@@ -18,12 +18,16 @@ practice: adam
 
 $$
 \begin{aligned}
-m_t &= \beta_1 m_{t-1}+(1-\beta_1)\,g_t &&\text{一階動差：梯度的移動平均（動量）}\\
-s_t &= \beta_2 s_{t-1}+(1-\beta_2)\,g_t^2 &&\text{二階動差：梯度平方的移動平均（RMSProp）}\\
-\hat m_t &= \frac{m_t}{1-\beta_1^t},\quad \hat s_t=\frac{s_t}{1-\beta_2^t} &&\text{偏差修正}\\
+m_t &= \beta_1 m_{t-1}+(1-\beta_1)\,g_t\\
+s_t &= \beta_2 s_{t-1}+(1-\beta_2)\,g_t^2\\
+\hat m_t &= \frac{m_t}{1-\beta_1^t},\quad \hat s_t=\frac{s_t}{1-\beta_2^t}\\
 x_{t} &= x_{t-1}-\eta\,\frac{\hat m_t}{\sqrt{\hat s_t}+\varepsilon}
 \end{aligned}
 $$
+
+- $m_t$：一階動差，梯度的移動平均（動量）
+- $s_t$：二階動差，梯度平方的移動平均（RMSProp）
+- $\hat m_t,\hat s_t$：偏差修正後的估計
 
 常用預設值：$\beta_1=0.9$、$\beta_2=0.999$、$\varepsilon=10^{-8}$，深度學習中 $\eta=10^{-3}$。
 
@@ -85,7 +89,7 @@ Adam 把兩者合起來並加上偏差修正：
 3. 回到 $\theta=0°$，把 Adam 的 $\eta$ 調到 0.01、迭代數 300：Adam 停在 $(-1.99, 0.18)$，$f=2.1$。起點離最小值約 4.9，每步最多約走 0.01，300 步根本走不到。
 4. 換到 Himmelblau：Adam（$\eta=0.1$）150 步後 $f=8.1\times10^{-5}$。把 GD 的 $\eta$ 設為 0.01，35 步就收斂（$f\approx7\times10^{-23}$）。**在小而光滑的問題上，調好的簡單方法常常更好。**
 
-## Scratch practice
+## 程式與練習
 
 <!-- practice -->
 

@@ -11,9 +11,9 @@ from __future__ import annotations
 import math
 import traceback
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Callable
 
-from .problems import Vec, make_problem
+from .problems import Vec, as_vec, make_problem  # noqa: F401 (re-export)
 from .trace import run
 
 
@@ -40,16 +40,7 @@ class Exercise:
     reference: Callable                       # reference learner-style fn
     demo: dict                                # problem/params for layers 2-3
     converge_below: float = 1e-8
-
-
-def as_vec(obj: Any) -> Vec:
-    """Convert a length-2 sequence (tuple, list, numpy array) to floats."""
-    try:
-        if len(obj) != 2:
-            raise ValueError
-        return (float(obj[0]), float(obj[1]))
-    except (TypeError, ValueError):
-        raise TypeError(f"需要長度 2 的向量，收到 {obj!r}") from None
+    blanks: tuple[str, ...] = ()              # substrings of `solution` to hide
 
 
 def _close(a: Vec, b: Vec, tol: float = 1e-7) -> bool:

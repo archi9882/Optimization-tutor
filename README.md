@@ -6,7 +6,7 @@
 2. **應用場景**：跨領域的實際例子，包括機器學習、農業、水文與地球科學反演
 3. **解決什麼問題**：它補了前一個方法的哪個缺點
 4. **動畫演示**：可調參數、可換測試問題、可多個演算法同場比較
-5. **Scratch practice**：在瀏覽器裡從零實作，分三層自動檢查，並把你的軌跡畫在參考解上
+5. **程式與練習**：兩個折疊區塊。「虛擬碼與示範程式」顯示的 Python 就是動畫實際執行的程式；「挖空練習」把示範程式的關鍵運算式挖掉讓你填，也可以切換成從零寫，分三層自動檢查，並把你的軌跡畫在參考解上
 
 ## 目前進度
 
@@ -15,7 +15,7 @@
 | 目錄（59 種，含篩選與搜尋） | ✅ |
 | 渲染器 ①：2D 等高線 + 路徑 + 收斂曲線 | ✅ |
 | 完整頁面 | 一階方法全家族 8 頁：GD、SGD、動量法、Nesterov、AdaGrad、RMSProp、Adam、座標下降（AI 草稿，待作者審閱） |
-| 練習題 | 8 題，每題對應上述一種演算法 |
+| 程式與練習 | 8 種演算法各有虛擬碼、示範程式與挖空練習（另可切換成從零寫） |
 | 渲染器 ②～⑤（多面體、族群、Pareto、圖/表格） | 尚未開始 |
 
 ## 快速開始
@@ -35,7 +35,8 @@ Windows 可將 `python` 換成 `py`。網站必須透過 `http://` 開啟，直�
 ```
 optlab/            參考實作（純 Python、無 numpy，CPython 與 Pyodide 共用）
   problems.py      測試問題：二次碗（可調 κ 與旋轉）、Rosenbrock、Himmelblau
-  first_order.py   GD、Momentum、Nesterov、AdaGrad、RMSProp、Adam
+  demos/           每種演算法一個檔案：虛擬碼 + 示範函式（頁面顯示的程式＝動畫執行的程式）
+  first_order.py   動畫用的優化器清單與參數範圍，step 函式直接取自 demos/
   trace.py         執行器：產生軌跡 {xs, fs, status}
   grading.py       三層評分：單步數值 → 收斂行為 → 軌跡重合
   exercises/       每題的骨架、提示、解答與測資
@@ -57,7 +58,7 @@ tests/             pytest
 1. 在 `content/catalog.yaml` 加一筆 metadata，首頁就會出現它的卡片與骨架頁。
 2. 若屬於連續二維問題，在 `optlab/` 加 step 函式並登記到 `OPTIMIZERS`，就能直接使用渲染器 ①。
 3. 寫 `content/algorithms/<id>.md`，用 `<!-- lab -->` 和 `<!-- practice -->` 標記插入動畫與練習。
-4. 練習題放在 `optlab/exercises/`，並登記到 `EXERCISES`。
+4. 示範程式與虛擬碼放在 `optlab/demos/<id>.py`；練習題（骨架、提示、測資、挖空位置）放在 `optlab/exercises/<id>.py`，並登記到 `EXERCISES`。
 5. 執行 `python -m pytest -q`，建置測試會檢查 id、標籤與嵌入資料是否一致。
 
 ## 部署

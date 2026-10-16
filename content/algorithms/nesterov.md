@@ -19,11 +19,13 @@ practice: nesterov
 
 $$
 \begin{aligned}
-y_k &= x_k-\eta\beta\,v_k &&\text{（照慣性先滑過去）}\\
-v_{k+1} &= \beta\,v_k+\nabla f(y_k) &&\text{（在前方的點算梯度）}\\
+y_k &= x_k-\eta\beta\,v_k\\
+v_{k+1} &= \beta\,v_k+\nabla f(y_k)\\
 x_{k+1} &= x_k-\eta\,v_{k+1}
 \end{aligned}
 $$
+
+第一行是照慣性先滑過去的位置，第二行在那個位置算梯度並更新速度，第三行移動。
 
 和[動量法](momentum.html)只差一個地方：**梯度在 $y_k$ 算，而不是在 $x_k$ 算**。$y_k$ 是「如果只靠慣性，下一步大概會到哪」的位置。
 
@@ -87,7 +89,7 @@ Nesterov 法只把梯度的計算位置挪到前方，就得到**對所有凸、
 3. 把 $\beta$ 調回 0.8：差距縮小（89 步對 64 步）。慣性越大，「先看一步」越有價值。
 4. 換到 Rosenbrock，兩者都設 $\eta=0.001$、$\beta=0.9$，迭代數 300：動量法停在 $(0.77, 0.59)$，Nesterov 到達 $(0.98, 0.96)$。
 
-## Scratch practice
+## 程式與練習
 
 <!-- practice -->
 

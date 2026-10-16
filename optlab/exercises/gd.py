@@ -1,7 +1,9 @@
 """Exercise: one gradient-descent step."""
 from __future__ import annotations
 
-from ..grading import Exercise, StepCase, as_vec
+from .. import demos
+from ..demos import gd as DEMO
+from ..grading import Exercise, StepCase
 
 SKELETON = '''def gd_step(x, grad, lr):
     """一步梯度下降。
@@ -14,22 +16,6 @@ SKELETON = '''def gd_step(x, grad, lr):
     raise NotImplementedError
 '''
 
-SOLUTION = '''def gd_step(x, grad, lr):
-    return (x[0] - lr * grad[0], x[1] - lr * grad[1])
-'''
-
-
-def reference(x, grad, lr):
-    """Reference implementation in the learner's signature."""
-    return (x[0] - lr * grad[0], x[1] - lr * grad[1])
-
-
-def adapter(fn):
-    """Wrap a learner-style gd_step into the shared StepFn signature."""
-    def step(x, problem, state, p):
-        return as_vec(fn(x, problem.grad(x), p["lr"])), state
-    return step
-
 
 EXERCISE = Exercise(
     id="gd",
@@ -40,7 +26,8 @@ EXERCISE = Exercise(
         "虛擬碼：x_new = x − η · ∇f(x)，兩個分量分開算。",
         "第一個分量：x[0] - lr * grad[0]",
     ],
-    solution=SOLUTION,
+    solution=demos.source("gd"),
+    blanks=("xi - lr * gi",),
     cases=[
         StepCase("一般情況", {"x": (1.0, 2.0), "grad": (0.5, -1.0),
                           "lr": 0.1}, ((0.95, 2.1),)),
@@ -49,8 +36,8 @@ EXERCISE = Exercise(
         StepCase("從原點出發", {"x": (0.0, 0.0), "grad": (2.0, 4.0),
                            "lr": 0.5}, ((-1.0, -2.0),)),
     ],
-    adapter=adapter,
-    reference=reference,
+    adapter=DEMO.adapter,
+    reference=DEMO.FUNC,
     demo={"problem": "quadratic", "problem_params": {"kappa": 10},
           "params": {"lr": 0.15}, "n_iter": 300},
 )

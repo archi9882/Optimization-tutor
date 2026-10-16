@@ -230,3 +230,36 @@ def test_gd_is_rotation_invariant() -> None:
     ra = (a["fs"][-1] / a["fs"][-11]) ** 0.1
     rb = (b["fs"][-1] / b["fs"][-11]) ** 0.1
     assert ra == pytest.approx(rb, rel=1e-6)
+
+
+@pytest.mark.parametrize("ex_id", list(EXERCISES))
+def test_displayed_demo_source_is_what_the_lab_runs(ex_id: str) -> None:
+    """exec() the code shown on the page; it must reproduce the lab trace."""
+    from optlab import demos
+    ns: dict = {}
+    exec(demos.source(ex_id), ns)
+    fn = ns[EXERCISES[ex_id].func_name]
+    ex = EXERCISES[ex_id]
+    prob = make_problem(ex.demo["problem"], **ex.demo.get("problem_params", {}))
+    params = OPTIMIZERS[ex_id].defaults() | ex.demo["params"]
+    shown = run(demos.MODULES[ex_id].adapter(fn), prob, prob.x0, params, 100)
+    lab = run(OPTIMIZERS[ex_id].step, prob, prob.x0, params, 100)
+    assert shown["xs"] == lab["xs"]
+
+
+@pytest.mark.parametrize("ex_id", list(EXERCISES))
+def test_every_blank_is_unique_and_matters(ex_id: str) -> None:
+    """Each blank appears once in the solution, and a wrong fill fails."""
+    ex = EXERCISES[ex_id]
+    assert ex.blanks, "exercise needs at least one blank"
+    for blank in ex.blanks:
+        assert ex.solution.count(blank) == 1, blank
+        broken = ex.solution.replace(blank, "0")
+        assert not grade_source(ex, broken)["passed"], blank
+
+
+def test_every_demo_has_pseudocode() -> None:
+    """Each demo module ships non-empty pseudocode."""
+    from optlab import demos
+    for demo_id, mod in demos.MODULES.items():
+        assert mod.PSEUDOCODE.strip(), demo_id
