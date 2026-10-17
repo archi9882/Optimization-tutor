@@ -244,7 +244,8 @@ def run_tabu(step=tabu_demo.tabu_step, n: int = 9, seed: int = FIELD_SEED,
         tour = list(new)
         tabu = {e: k - 1 for e, k in tabu.items() if k > 1}
         for e in removed:
-            tabu[e] = tenure
+            if tenure > 0:                       # tenure 0 = no memory at all
+                tabu[e] = tenure
         now = L(tour, D)
         improved = now < best_len - 1e-9
         if improved:
@@ -254,8 +255,8 @@ def run_tabu(step=tabu_demo.tabu_step, n: int = 9, seed: int = FIELD_SEED,
                       "tabu": [[list(e), k] for e, k in sorted(tabu.items())], "seg": [i, j],
                       "note": f"第 {it + 1} 回合：反轉第 {i + 2}～{j + 1} 站，{before:.3f} → {now:.3f} km，{trend}。"
                               + ("打破歷史最佳！" if improved else f"歷史最佳仍是 {best_len:.3f} km。")
-                              + f"拿掉的邊 {removed[0][0] + 1}–{removed[0][1] + 1}、{removed[1][0] + 1}–{removed[1][1] + 1}"
-                                f" 在 {tenure} 回合內不准加回。"})
+                              + (f"拿掉的邊 {removed[0][0] + 1}–{removed[0][1] + 1}、{removed[1][0] + 1}–{removed[1][1] + 1}"
+                                 f" 在 {tenure} 回合內不准加回。" if tenure > 0 else "禁忌期為 0：不記任何邊。")})
     return {"kind": "graph", "tour": True, "points": pts, "steps": steps, "status": "done",
             "length": best_len}
 

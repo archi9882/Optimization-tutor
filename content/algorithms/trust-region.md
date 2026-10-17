@@ -28,7 +28,7 @@ $$
 $$
 
 - $\rho_k<0.25$：模型不準，縮小半徑 $\Delta\leftarrow\Delta/4$。
-- $\rho_k>0.75$ 且步子碰到邊界：模型很準，放大半徑 $\Delta\leftarrow2\Delta$。
+- $\rho_k>0.75$ 且步子碰到邊界：模型很準，放大半徑 $\Delta\leftarrow\min(2\Delta,\,10)$（本站設上限 10）。
 - $\rho_k>0.1$ 才接受這一步，否則 $x$ 不動。
 
 <details markdown="1">

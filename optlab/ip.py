@@ -39,11 +39,12 @@ def _bound_text(prob: L.LP, bounds: list) -> str:
 def run_branch_bound(prob: L.LP, decide=branch_bound.bb_decide, max_nodes: int = 40) -> dict:
     """Depth-first branch and bound; the '≤' child is explored first."""
     best_z, best_x = -INF, None
-    stack = [(0, None, [])]                    # (node id, parent id, [(j, ±1, value)])
-    tree, steps, next_id = [], [], 1
+    stack = [(None, [])]                       # (parent id, [(j, ±1, value)])
+    tree, steps = [], []
     status = "max_nodes"
     while stack and len(tree) < max_nodes:
-        nid, parent, bounds = stack.pop()
+        parent, bounds = stack.pop()
+        nid = len(tree)                        # nodes are numbered in the order they are solved
         A_ex = [[sign * (1.0 if k == j else 0.0) for k in range(2)] for j, sign, _ in bounds]
         b_ex = [sign * v for _, sign, v in bounds]
         x, z, poly = solve_relaxation(prob, A_ex, b_ex)
@@ -66,10 +67,8 @@ def run_branch_bound(prob: L.LP, decide=branch_bound.bb_decide, max_nodes: int =
                     f"{name} = {L._g(x[j])} 不是整數。分成 {name} ≤ {lo} 與 {name} ≥ {hi} 兩個子問題，"
                     f"中間的長條被切掉。")
             node["branch"] = [j, lo, hi]
-            up, down = next_id, next_id + 1
-            next_id += 2
-            stack.append((up, nid, bounds + [(j, -1, hi)]))
-            stack.append((down, nid, bounds + [(j, 1, lo)]))
+            stack.append((nid, bounds + [(j, -1, hi)]))
+            stack.append((nid, bounds + [(j, 1, lo)]))
         tree.append(node)
         steps.append({"x": x, "z": z, "node": nid, "polygon": poly, "note": note,
                       "incumbent": best_x, "best_z": None if best_z == -INF else best_z,

@@ -98,7 +98,14 @@ def _distinct_tours(out) -> int:
 
 def test_tabu_memory_prevents_cycling() -> None:
     """Without memory the search cycles among a few tours; tenure 3 explores more."""
-    no_memory = combo.run_tabu(tenure=0, iters=30)
-    memory = combo.run_tabu(tenure=3, iters=30)
-    assert _distinct_tours(no_memory) == 6
+    no_memory = combo.run_tabu(tenure=0)
+    memory = combo.run_tabu(tenure=3)
+    assert _distinct_tours(no_memory) == 3
     assert _distinct_tours(memory) > 3 * _distinct_tours(no_memory)
+
+
+def test_tabu_tenure_zero_keeps_no_memory() -> None:
+    """Tenure 0 must not forbid anything (regression: it used to act like 1)."""
+    out = combo.run_tabu(tenure=0)
+    assert all(s["tabu"] == [] for s in out["steps"])
+    assert out["steps"] != combo.run_tabu(tenure=1)["steps"]

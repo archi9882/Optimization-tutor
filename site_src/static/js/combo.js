@@ -133,7 +133,7 @@ function graphPanel(k) {
     kids.push(h("p", {}, `歷史最佳 ${s.best_len.toFixed(3)} km`));
     kids.push(h("p", { class: "hint-text" }, "禁忌的邊（剩餘回合）："));
     kids.push(s.tabu.length
-      ? h("ul", { class: "wset" }, ...s.tabu.map(([[u, v], left]) => h("li", {}, `${u + 1}–${v + 1}（${left}）`)))
+      ? h("p", { class: "chips" }, ...s.tabu.map(([[u, v], left]) => h("span", { class: "badge" }, `${u + 1}–${v + 1}・${left}`)))
       : h("p", { class: "hint-text" }, "（空）"));
     kids.push(h("p", { class: "hint-text" }, "綠色虛線是歷史最佳路線（比目前短時才畫）；橘色是這一步新換上的兩條邊。"));
   } else {
@@ -153,7 +153,7 @@ function drawDP(k) {
     for (let t = 0; t <= T; t++) {
       const v = s.V[t][sv], pol = t < T ? s.P[t][sv] : null;
       const cls = [t === s.col ? "piv-col" : "", onPath(t, sv) ? "piv-cell" : ""].join(" ");
-      cells.push(h("td", { class: cls }, v === null ? "" : num(v), pol === null || pol === undefined ? "" : h("small", { class: "dp-r" }, ` r${pol}`)));
+      cells.push(h("td", { class: cls }, v === null ? "" : v.toFixed(1), pol === null || pol === undefined ? "" : h("small", { class: "dp-r" }, ` r${pol}`)));
     }
     rows.push(h("tr", {}, h("th", { scope: "row" }, String(sv)), ...cells));
   }
