@@ -70,7 +70,7 @@ const nextBtn = h("button", { class: "btn", type: "button", onclick: () => { pau
 mount.append(h("div", { class: "widget lab lp-lab" },
   h("p", { class: "lp-problem" }, h("strong", {}, st.res.name), " ", h("span", { class: "hint-text" }, st.res.note)),
   sliders.length ? h("div", { class: "widget-row" }, ...sliders, pyStatus) : "",
-  h("div", { class: "lab-plots" }, plotBox, h("div", {}, panelTitle, panel)),
+  h("div", { class: `lab-plots${st.res.method === "cutting_plane" ? " even" : ""}` }, plotBox, h("div", {}, panelTitle, panel)),
   note,
   h("div", { class: "widget-row" }, resetBtn, prevBtn, playBtn, nextBtn, counter),
   h("p", { class: "hint-text" }, "滑鼠移到路徑上可以看每一步的座標與目標值；拖動係數滑桿會重新求解。")));
@@ -98,6 +98,7 @@ function tableauPanel(k) {
   });
   const caption = next
     ? `下一步：${cols[pc]} 進基（欄），${step.basis[pr]} 出基（列），框起來的是樞紐元素。`
+    : k < st.res.steps.length - 1 ? "下一步：由這張表產生一條割平面。"
     : st.res.status === "optimal" ? "已達最優，沒有下一個樞紐。" : `停止：${st.res.status}`;
   panelTitle.textContent = "單純形表（每一步對應圖上的一個頂點）";
   panel.replaceChildren(h("div", { class: "tableau-wrap" }, h("table", { class: "tableau" }, h("thead", {}, head), h("tbody", {}, ...body))),
@@ -124,7 +125,37 @@ function activeSetPanel(k) {
     h("p", { class: "hint-text" }, `目前 x = (${fmt(s.x[0])}, ${fmt(s.x[1])})，目標值 ${fmt(s.z)}。`));
 }
 
-const PANELS = { simplex: tableauPanel, dual_simplex: tableauPanel, barrier: barrierPanel, active_set: activeSetPanel };
+const ACTION = { branch: "分支", incumbent: "新的最佳解", prune: "以界限剪掉", infeasible: "不可行" };
+
+function treePanel(k) {
+  const step = st.res.steps[k];
+  panelTitle.textContent = "分支樹（深度優先，先走 ≤ 的分支）";
+  const nodes = step.tree;
+  const kids = (id) => nodes.filter((n) => n.parent === id);   // in the order they were explored
+  const num = (v) => String(Number(v.toFixed(3)));
+  const item = (n) => {
+    const lp = n.x ? `LP (${num(n.x[0])}, ${num(n.x[1])})，z = ${num(n.z)}` : "LP 不可行";
+    const li = h("li", { class: n.id === step.node ? "cur" : "" },
+      h("span", { class: "node-id" }, `節點 ${n.id}`), " ", h("span", { class: "node-label" }, n.label), h("br"),
+      h("span", { class: "hint-text" }, lp), " ", h("span", { class: `badge badge-${n.action}` }, ACTION[n.action]));
+    const sub = kids(n.id);
+    if (sub.length) li.append(h("ul", {}, ...sub.map(item)));
+    return li;
+  };
+  const best = step.best_z === null ? "尚無" : `(${num(step.incumbent[0])}, ${num(step.incumbent[1])})，z = ${num(step.best_z)}`;
+  panel.replaceChildren(h("ul", { class: "bb-tree" }, ...kids(null).map(item)),
+    h("p", { class: "hint-text" }, `現有最佳解：${best}。圖上深色區域是目前節點的子問題，綠圈是現有最佳解。`));
+}
+
+function cutPanel(k) {
+  tableauPanel(k);
+  panelTitle.textContent = "單純形表（加入割之後多一列、一欄）";
+}
+
+const PANELS = {
+  simplex: tableauPanel, dual_simplex: tableauPanel, barrier: barrierPanel, active_set: activeSetPanel,
+  branch_bound: treePanel, cutting_plane: cutPanel,
+};
 
 // ---------- drawing ----------
 function last() { return st.res.steps.length - 1; }
@@ -133,6 +164,13 @@ function setFrame(k) {
   st.frame = Math.max(0, Math.min(last(), k));
   plot.setFrame(st.frame);
   PANELS[st.res.method](st.frame);
+  const s = st.res.steps[st.frame];
+  if (s.polygon || s.cuts) {
+    const marks = st.res.method === "branch_bound"
+      ? [{ x: s.x, kind: "lp", label: s.x ? "LP 最優" : "" }, { x: s.incumbent, kind: "best", label: "最佳解" }]
+      : [{ x: s.x, kind: "lp", label: "目前的解" }];
+    plot.setOverlay({ polygon: s.polygon, cuts: s.cuts || [], marks });
+  }
   note.textContent = st.res.steps[st.frame].note;
   counter.textContent = `第 ${st.frame} / ${last()} 步`;
   prevBtn.disabled = st.frame === 0;
@@ -143,9 +181,11 @@ function render() {
   plot.setGrid(st.res.grid);
   plot.setRegion(st.res.region);
   const steps = st.res.steps;
+  // Integer methods: no path (dual-simplex points may lie outside the region); marks only.
+  if (st.res.method === "branch_bound" || st.res.method === "cutting_plane") { plot.setSeries([]); setFrame(st.frame); return; }
   plot.setSeries([{
     xs: steps.map((s) => s.x), fs: steps.map((s) => s.z), status: st.res.status,
-    label: { simplex: "單純形法", dual_simplex: "對偶單純形法", barrier: "內點法", active_set: "有效集法" }[st.res.method],
+    label: { simplex: "單純形法", dual_simplex: "對偶單純形法", barrier: "內點法", active_set: "有效集法", cutting_plane: "割平面法" }[st.res.method],
     color: seriesColor(0), dots: true, big: steps.map((s) => s.central !== false),
   }]);
   setFrame(st.frame);

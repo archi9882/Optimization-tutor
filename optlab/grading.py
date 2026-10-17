@@ -8,6 +8,7 @@ Three layers of checks:
 """
 from __future__ import annotations
 
+import copy
 import math
 import traceback
 from dataclasses import dataclass
@@ -59,6 +60,8 @@ def same(got, want, tol: float = 1e-7) -> bool:
     """Structural comparison of nested numbers; None must match None."""
     if want is None:
         return got is None
+    if isinstance(want, str):
+        return got == want
     if _is_number(want):
         return _is_number(got) and abs(float(got) - want) <= tol * (1 + abs(want))
     try:
@@ -113,7 +116,8 @@ def grade(ex: Exercise, fn: Callable | dict) -> dict:
 
     for case in ex.cases:
         try:
-            out = ns[case.func or ex.func_name](**case.args)
+            # Fresh copies: learner code may mutate its inputs (e.g. union-find parents).
+            out = ns[case.func or ex.func_name](**copy.deepcopy(case.args))
             want = case.expected[0] if len(case.expected) == 1 else case.expected
             if out is None and want is not None:
                 raise TypeError("函式回傳了 None，是不是忘了 return？")

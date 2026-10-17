@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 
+from .combo import combo_lab
 from .exercises import EXERCISES
 from .grading import grade_source
 from .lp import lp_lab
@@ -45,6 +46,8 @@ def call(name: str, payload_json: str) -> str:
         result = problem_grid(payload)
     elif name == "traces":
         result = traces(payload)
+    elif name == "combo":
+        result = combo_lab(payload)
     elif name == "lp":
         result = lp_lab(payload)
     elif name == "grade":

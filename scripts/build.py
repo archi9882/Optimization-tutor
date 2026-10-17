@@ -110,6 +110,13 @@ def lp_data(cfg: dict) -> dict:
             "speed": cfg.get("speed", 1.0), "result": api.lp_lab(spec)}
 
 
+def combo_data(cfg: dict) -> dict:
+    """Precompute a combinatorial lab: {"method", "params", "speed"}."""
+    spec = {"method": cfg["method"], "params": cfg.get("params", {})}
+    return {"spec": spec, "sliders": cfg.get("sliders", []), "speed": cfg.get("speed", 1.0),
+            "result": api.combo_lab(spec)}
+
+
 def practice_data(ex_id: str) -> dict:
     """Skeleton, hints, solution and the plot background for one exercise."""
     ex = EXERCISES[ex_id]
@@ -121,7 +128,7 @@ def practice_data(ex_id: str) -> dict:
         prob = lpmod.make_lp(ex.lp_preset)
         out["grid"] = lpmod.objective_grid(prob)
         out["region"] = lpmod.region_data(prob)
-    else:
+    elif ex.demo:
         out["grid"] = api.problem_grid(ex.demo)
     return out
 
@@ -142,7 +149,8 @@ def load_catalog() -> dict:
         a["children"] = children[a["id"]]
         md = CONTENT / "algorithms" / f"{a['id']}.md"
         meta = split_frontmatter(md.read_text("utf-8"))[0] if md.exists() else {}
-        a["status"] = {"page": md.exists(), "lab": "lab" in meta or "lp" in meta,
+        a["status"] = {"page": md.exists(),
+                       "lab": "lab" in meta or "lp" in meta or "combo" in meta,
                        "practice": "practice" in meta}
     cat["by_id"] = {a["id"]: a for a in cat["algorithms"]}
     return cat
@@ -225,15 +233,18 @@ def build(out: Path = OUT, vendor: Path | None = None) -> None:
         html = render_markdown(body) if body else ""
         lab = lab_data(meta["lab"]) if "lab" in meta else None
         lpd = lp_data(meta["lp"]) if "lp" in meta else None
+        combod = combo_data(meta["combo"]) if "combo" in meta else None
         practice = practice_data(meta["practice"]) if "practice" in meta \
             else None
         html = html.replace("<!-- lab -->", '<div id="lab"></div>')
         html = html.replace("<!-- lp -->", '<div id="lp"></div>')
+        html = html.replace("<!-- combo -->", '<div id="combo"></div>')
         html = html.replace("<!-- practice -->", '<div id="practice"></div>')
         (OUT / "algorithms" / f"{a['id']}.html").write_text(page_tpl.render(
             root="..", a=a, meta=meta, body=html, **bases(".."),
             lab_json=to_script_json(lab) if lab else "",
             lp_json=to_script_json(lpd) if lpd else "",
+            combo_json=to_script_json(combod) if combod else "",
             practice_json=to_script_json(practice) if practice else "",
             **common), "utf-8")
 

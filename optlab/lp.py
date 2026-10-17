@@ -110,7 +110,23 @@ def farm_qp() -> LP:
     )
 
 
-PRESETS = {"farm": farm, "fertilizer": fertilizer, "farm_qp": farm_qp}
+def greenhouse(c1: float = 5.0, c2: float = 4.0) -> LP:
+    """Integer program: how many large and small greenhouses to build."""
+    return LP(
+        id="greenhouse", name="溫室興建（整數規劃）",
+        c=(c1, c2),
+        A=((6.0, 4.0), (1.0, 2.0)),
+        b=(24.0, 6.0),
+        labels=("預算：6x₁ + 4x₂ ≤ 24", "土地：x₁ + 2x₂ ≤ 6"),
+        var_labels=("大型 x₁", "小型 x₂"),
+        bounds=(-0.5, 5.5, -0.5, 4.0),
+        note="x₁、x₂ 為大型、小型溫室的棟數，必須是整數；c 為每棟年收益（十萬元）。",
+        extra={"integer": True},
+    )
+
+
+PRESETS = {"farm": farm, "fertilizer": fertilizer, "farm_qp": farm_qp,
+           "greenhouse": greenhouse}
 
 
 def make_lp(preset: str, **params: float) -> LP:
@@ -151,7 +167,7 @@ def region_data(lp: LP) -> dict:
             "constraints": [{"a": a, "b": bi, "label": lab}
                             for a, bi, lab in zip(A, b, labels)][:len(lp.A)],
             "c": list(lp.c), "sense": lp.sense, "var_labels": list(lp.var_labels),
-            "target": lp.extra.get("target")}
+            "target": lp.extra.get("target"), "lattice": lp.extra.get("integer", False)}
 
 
 def objective_grid(lp: LP, nx: int = 90, ny: int = 90) -> dict:
@@ -353,7 +369,11 @@ def lp_lab(spec: dict) -> dict:
     lp = make_lp(spec["preset"], **spec.get("preset_params", {}))
     method = spec["method"]
     kwargs = spec.get("params", {})
-    out = RUNNERS[method](lp, **kwargs)
+    if method in RUNNERS:
+        out = RUNNERS[method](lp, **kwargs)
+    else:
+        from . import ip                      # integer methods build on this module
+        out = ip.RUNNERS[method](lp, **kwargs)
     out.update({"region": region_data(lp), "grid": objective_grid(lp),
                 "method": method, "preset": lp.id, "name": lp.name,
                 "sense": lp.sense, "note": lp.note})

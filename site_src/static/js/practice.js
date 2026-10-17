@@ -147,14 +147,16 @@ const fold2 = h("details", { class: "fold" },
         h("div", { class: "widget-row", style: "margin-top:10px" }, runBtn, hintBtn, ansBtn, resetBtn, pyStatus),
         hintList),
       h("div", {}, plotBox, verdict, results)),
-    h("p", { class: "hint-text" }, "評分分三層：單步數值、在測試問題上的收斂行為、整條軌跡是否和參考解重合。")));
+    h("p", { class: "hint-text" }, "評分分三層：個別函式的測資、完整執行的最終結果、每一步是否和參考解相同。")));
 
 mount.append(h("div", { class: "folds" }, fold1, fold2));
 setMode(mode);
 
-const plot = new ContourPlot(plotBox, { maxHeight: 300 });
-plot.setGrid(ex.grid);
-if (ex.region) plot.setRegion(ex.region);
+// Combinatorial exercises have no 2D picture: the results list is the feedback.
+const plot = ex.grid ? new ContourPlot(plotBox, { maxHeight: 300 }) : null;
+if (plot) plot.setGrid(ex.grid);
+else plotBox.hidden = true;
+if (plot && ex.region) plot.setRegion(ex.region);
 
 onState((s) => {
   pyStatus.textContent = { idle: "", loading: "Python 載入中…", ready: "Python 已就緒", error: "Python 載入失敗" }[s];
@@ -202,7 +204,7 @@ function show(res) {
   const series = [];
   if (res.ref_trace) series.push({ ...res.ref_trace, label: "參考解", color: getComputedStyle(document.documentElement).getPropertyValue("--ink-2").trim(), dash: true });
   if (res.user_trace) series.push({ ...res.user_trace, label: "你的程式", color: seriesColor(0), dots: !!ex.region });
-  plot.setSeries(series);
+  if (plot) plot.setSeries(series);
 }
 
 function clozeSource() {

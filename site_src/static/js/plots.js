@@ -101,8 +101,92 @@ export class ContourPlot {
 
   setSeries(series) { this.series = series; this.draw(); }
 
-  // Renderer ②: {polygon, constraints: [{a, b, label}], target}.
+  // Renderer ②: {polygon, constraints: [{a, b, label}], target, lattice}.
   setRegion(region) { this.region = region; this.cache = null; this.draw(); }
+
+  // Per-step layer on top of the region: {polygon, cuts: [{a, b, label}],
+  // marks: [{x, kind: "lp" | "best", label}]}. Redrawn every frame.
+  setOverlay(ov) { this.overlay = ov; this.draw(); }
+
+  inPolygon(poly, x, y) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+
+  onBoundary(poly, x, y) {
+    return poly.some(([xi, yi], i) => {
+      const [xj, yj] = poly[(i + 1) % poly.length];
+      const cross = (xj - xi) * (y - yi) - (yj - yi) * (x - xi);
+      const dot = (x - xi) * (xj - xi) + (y - yi) * (yj - yi);
+      return Math.abs(cross) < 1e-7 && dot >= -1e-9 && dot <= (xj - xi) ** 2 + (yj - yi) ** 2 + 1e-9;
+    });
+  }
+
+  feasible(poly, x, y) { return poly.length > 0 && (this.inPolygon(poly, x, y) || this.onBoundary(poly, x, y)); }
+
+  drawOverlay(c) {
+    const ov = this.overlay;
+    if (ov.polygon && ov.polygon.length) {
+      c.save();
+      c.beginPath();
+      ov.polygon.forEach(([x, y], i) => { const [px, py] = this.toPx(x, y); i ? c.lineTo(px, py) : c.moveTo(px, py); });
+      c.closePath();
+      c.globalAlpha = 0.22; c.fillStyle = css("--accent"); c.fill();
+      c.globalAlpha = 1; c.lineWidth = 2; c.strokeStyle = css("--accent"); c.stroke();
+      c.restore();
+      // Integer points the current sub-problem still contains.
+      if (this.region?.lattice) {
+        const [x0, x1, y0, y1] = this.grid.bounds;
+        c.fillStyle = css("--accent-ink");
+        for (let i = Math.ceil(x0); i <= x1; i++) for (let j = Math.ceil(y0); j <= y1; j++) {
+          if (!this.feasible(ov.polygon, i, j)) continue;
+          const [px, py] = this.toPx(i, j);
+          c.beginPath(); c.arc(px, py, 3.5, 0, 7); c.fill();
+        }
+      }
+    }
+    for (const cut of ov.cuts || []) {
+      const seg = this.clipLine(cut.a, cut.b);
+      if (!seg) continue;
+      const [p, q] = seg.map(([x, y]) => this.toPx(x, y));
+      c.save();
+      c.strokeStyle = css("--s2"); c.lineWidth = 2;
+      c.beginPath(); c.moveTo(...p); c.lineTo(...q); c.stroke();
+      // Label partway along the cut, staggered so successive cuts do not collide.
+      const k = (ov.cuts || []).indexOf(cut), u = 0.3 + 0.12 * k;
+      const lx = Math.min(this.w - 34, Math.max(4, p[0] + (q[0] - p[0]) * u + 6));
+      const ly = Math.min(this.h - 16, Math.max(4, p[1] + (q[1] - p[1]) * u));
+      c.font = `12px ${css("--font")}`;
+      c.fillStyle = css("--surface"); c.globalAlpha = 0.85;
+      c.fillRect(lx - 2, ly - 1, c.measureText(cut.label).width + 4, 15);
+      c.globalAlpha = 1; c.fillStyle = css("--s2");
+      c.textAlign = "left"; c.textBaseline = "top";
+      c.fillText(cut.label, lx, ly);
+      c.restore();
+    }
+    for (const m of ov.marks || []) {
+      if (!m.x) continue;
+      const [px, py] = this.toPx(...m.x);
+      c.save();
+      if (m.kind === "best") {
+        c.strokeStyle = css("--good"); c.lineWidth = 2.5;
+        c.beginPath(); c.arc(px, py, 8, 0, 7); c.stroke();
+      } else {
+        c.fillStyle = css("--s1"); c.strokeStyle = css("--surface"); c.lineWidth = 2;
+        c.beginPath(); c.arc(px, py, 5.5, 0, 7); c.fill(); c.stroke();
+      }
+      if (m.label) {
+        c.font = `12px ${css("--font")}`; c.fillStyle = m.kind === "best" ? css("--good") : css("--ink");
+        c.textAlign = "left"; c.textBaseline = "bottom";
+        c.fillText(m.label, Math.min(px + 10, this.w - 60), py - 6);
+      }
+      c.restore();
+    }
+  }
 
   // Segment of the line a·x = b inside the view box, or null.
   clipLine(a, b) {
@@ -134,6 +218,18 @@ export class ContourPlot {
       r.polygon.forEach(([x, y], i) => { const [px, py] = this.toPx(x, y); i ? c.lineTo(px, py) : c.moveTo(px, py); });
       c.closePath();
       c.fill();
+      c.restore();
+    }
+    // Integer lattice: feasible points dark, infeasible ones faint.
+    if (r.lattice) {
+      const [x0, x1, y0, y1] = this.grid.bounds;
+      c.save();
+      for (let i = Math.ceil(x0); i <= x1; i++) for (let j = Math.ceil(y0); j <= y1; j++) {
+        const ok = this.feasible(r.polygon, i, j);
+        const [px, py] = this.toPx(i, j);
+        c.fillStyle = ok ? css("--ink-2") : css("--axis");
+        c.beginPath(); c.arc(px, py, ok ? 3 : 2, 0, 7); c.fill();
+      }
       c.restore();
     }
     // Axes x1 = 0 and x2 = 0.
@@ -264,6 +360,7 @@ export class ContourPlot {
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.drawImage(this.cache, 0, 0);
     c.restore();
+    if (this.overlay) this.drawOverlay(c);
     const surface = css("--surface");
     for (const s of this.series) {
       const n = Math.min(s.xs.length, this.frame + 1);

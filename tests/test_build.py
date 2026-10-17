@@ -38,10 +38,15 @@ def test_detail_pages_reference_known_algorithms_and_exercises() -> None:
                 assert a in OPTIMIZERS, (md.name, a)
             assert "<!-- lab -->" in body, md.name
         if "lp" in meta:
+            from optlab.ip import RUNNERS as IP_RUNNERS
             from optlab.lp import PRESETS, RUNNERS
-            assert meta["lp"]["method"] in RUNNERS, md.name
+            assert meta["lp"]["method"] in RUNNERS | IP_RUNNERS, md.name
             assert meta["lp"]["preset"] in PRESETS, md.name
             assert "<!-- lp -->" in body, md.name
+        if "combo" in meta:
+            from optlab.combo import RUNNERS as COMBO
+            assert meta["combo"]["method"] in COMBO, md.name
+            assert "<!-- combo -->" in body, md.name
         if "practice" in meta:
             assert meta["practice"] in EXERCISES, md.name
             assert "<!-- practice -->" in body, md.name
@@ -83,7 +88,7 @@ def test_inline_json_cannot_close_script_tag(site: Path) -> None:
     """Embedded data must never contain a raw '</' sequence."""
     for page in (site / "algorithms").glob("*.html"):
         text = page.read_text("utf-8")
-        for marker in ('id="lab-data">', 'id="lp-data">', 'id="practice-data">'):
+        for marker in ('id="lab-data">', 'id="lp-data">', 'id="combo-data">', 'id="practice-data">'):
             if marker in text:
                 blob = text.split(marker, 1)[1].split("</script>", 1)[0]
                 assert "</" not in blob
