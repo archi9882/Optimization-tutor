@@ -14,9 +14,10 @@
 |---|---|
 | 目錄（59 種，含篩選與搜尋） | ✅ |
 | 渲染器 ①：2D 等高線 + 路徑 + 收斂曲線（含信賴域半徑） | ✅ |
-| 完整頁面 | 15 頁（AI 草稿，待作者審閱）<br>一階方法 8 頁：GD、SGD、動量法、Nesterov、AdaGrad、RMSProp、Adam、座標下降<br>二階與擬牛頓 7 頁：牛頓法、高斯-牛頓、Levenberg-Marquardt、BFGS、L-BFGS、非線性 CG、信賴域法 |
-| 程式與練習 | 15 種演算法各有虛擬碼、示範程式與挖空練習（另可切換成從零寫） |
-| 渲染器 ②～⑤（多面體、族群、Pareto、圖/表格） | 尚未開始 |
+| 渲染器 ②：可行多面體 + 限制線 + 等目標值線 + 單純形表（樞紐標示）／中心路徑／工作集 | ✅ |
+| 完整頁面 | 19 頁（AI 草稿，待作者審閱）<br>一階方法 8 頁：GD、SGD、動量法、Nesterov、AdaGrad、RMSProp、Adam、座標下降<br>二階與擬牛頓 7 頁：牛頓法、高斯-牛頓、Levenberg-Marquardt、BFGS、L-BFGS、非線性 CG、信賴域法<br>線性與二次規劃 4 頁：單純形法、對偶單純形法、內點法（LP）、有效集法（QP） |
+| 程式與練習 | 19 種演算法各有虛擬碼、示範程式與挖空練習（另可切換成從零寫） |
+| 渲染器 ③～⑤（族群、Pareto、圖/表格） | 尚未開始 |
 
 ## 快速開始
 
@@ -37,6 +38,7 @@ optlab/            參考實作（純 Python、無 numpy，CPython 與 Pyodide �
   problems.py      測試問題：二次碗（可調 κ 與旋轉）、Rosenbrock、Himmelblau（含殘差形式）
   demos/           每種演算法一個檔案：虛擬碼 + 示範函式（頁面顯示的程式＝動畫執行的程式）
   optimizers.py    動畫用的優化器清單與參數範圍，step 函式直接取自 demos/
+  lp.py            二維 LP/QP 預設問題（作物配置、施肥配方）與逐步執行器（渲染器 ②）
   trace.py         執行器：產生軌跡 {xs, fs, status}
   grading.py       三層評分：單步數值 → 收斂行為 → 軌跡重合
   exercises/       每題的骨架、提示、解答與測資
@@ -56,7 +58,7 @@ tests/             pytest
 ## 新增一種演算法
 
 1. 在 `content/catalog.yaml` 加一筆 metadata，首頁就會出現它的卡片與骨架頁。
-2. 若屬於連續二維問題，在 `optlab/` 加 step 函式並登記到 `OPTIMIZERS`，就能直接使用渲染器 ①。
+2. 若屬於連續二維問題，在 `optlab/` 加 step 函式並登記到 `OPTIMIZERS`，就能直接使用渲染器 ①。LP/QP 類則在 `optlab/lp.py` 加執行器，頁面用 `lp:` frontmatter 與 `<!-- lp -->` 標記使用渲染器 ②。
 3. 寫 `content/algorithms/<id>.md`，用 `<!-- lab -->` 和 `<!-- practice -->` 標記插入動畫與練習。
 4. 示範程式與虛擬碼放在 `optlab/demos/<id>.py`；練習題（骨架、提示、測資、挖空位置）放在 `optlab/exercises/<id>.py`，並登記到 `EXERCISES`。
 5. 執行 `python -m pytest -q`，建置測試會檢查 id、標籤與嵌入資料是否一致。
@@ -89,6 +91,12 @@ tests/             pytest
 | Levenberg-Marquardt | 水文模式參數校準軟體普遍採用 LM 類方法 |
 | BFGS | 強凸與 Wolfe 線搜尋下的超線性收斂 |
 | 信賴域法 | 全域收斂保證與接近解時的二次收斂 |
+| 單純形法 | Klee–Minty 立方體讓 Dantzig 規則走過 2ⁿ 個頂點 |
+| 單純形法 | Bland 規則可避免循環 |
+| 對偶單純形法 | 求解器在很多問題上預設使用對偶單純形法；分支定界常以它重新求解子問題 |
+| 內點法（LP） | 多項式時間複雜度；精確中心點的對偶間隙等於 m·μ |
+| 內點法（LP） | 實務求解器多用原始-對偶形式；中心路徑的極限是最優面的解析中心 |
+| 有效集法（QP） | 模型預測控制常以有效集法暖啟動 |
 
 ## 第三方資源
 

@@ -10,6 +10,8 @@ from optlab import OPTIMIZERS, make_problem, run, run_named
 from optlab.exercises import EXERCISES, grade_json
 from optlab.grading import grade, grade_source
 
+CONTINUOUS = [k for k, ex in EXERCISES.items() if ex.check is None]
+
 PROBLEMS = [("quadratic", {"kappa": 10, "theta_deg": 30}),
             ("rosenbrock", {}), ("himmelblau", {})]
 
@@ -165,7 +167,7 @@ def test_grade_json_round_trips() -> None:
     assert data["passed"] and data["user_trace"]["xs"]
 
 
-@pytest.mark.parametrize("ex_id", list(EXERCISES))
+@pytest.mark.parametrize("ex_id", CONTINUOUS)
 def test_exercise_reference_matches_lab_optimizer(ex_id: str) -> None:
     """Practice reference and the animated optimizer give identical traces."""
     ex = EXERCISES[ex_id]
@@ -232,7 +234,7 @@ def test_gd_is_rotation_invariant() -> None:
     assert ra == pytest.approx(rb, rel=1e-6)
 
 
-@pytest.mark.parametrize("ex_id", list(EXERCISES))
+@pytest.mark.parametrize("ex_id", CONTINUOUS)
 def test_displayed_demo_source_is_what_the_lab_runs(ex_id: str) -> None:
     """exec() the code shown on the page; it must reproduce the lab trace."""
     from optlab import demos

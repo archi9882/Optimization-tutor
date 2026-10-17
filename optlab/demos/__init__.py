@@ -10,8 +10,9 @@ from __future__ import annotations
 import inspect
 from types import ModuleType
 
-from . import (adagrad, adam, bfgs, coordinate, gauss_newton, gd, lbfgs, lm,
-               momentum, ncg, nesterov, newton, rmsprop, sgd, trust_region)
+from . import (active_set, adagrad, adam, barrier, bfgs, coordinate, dual_simplex,
+               gauss_newton, gd, lbfgs, lm, momentum, ncg, nesterov, newton,
+               rmsprop, sgd, simplex, trust_region)
 
 MODULES: dict[str, ModuleType] = {
     "gd": gd, "sgd": sgd, "momentum": momentum, "nesterov": nesterov,
@@ -19,6 +20,8 @@ MODULES: dict[str, ModuleType] = {
     "coordinate": coordinate,
     "newton": newton, "gauss_newton": gauss_newton, "lm": lm, "bfgs": bfgs,
     "lbfgs": lbfgs, "ncg": ncg, "trust_region": trust_region,
+    "simplex": simplex, "dual_simplex": dual_simplex, "barrier": barrier,
+    "active_set": active_set,
 }
 
 

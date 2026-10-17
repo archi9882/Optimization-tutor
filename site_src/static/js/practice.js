@@ -69,7 +69,7 @@ const fold1 = h("details", { class: "fold" },
     h("pre", { class: "pseudo" }, ex.pseudocode),
     h("h4", {}, "Python 示範程式"),
     codeView(ex.solution),
-    h("p", { class: "hint-text" },
+    h("p", { class: "hint-text" }, ex.loop_note ||
       `上方動畫每一步呼叫一次 ${ex.func}()；外層迴圈負責提供梯度、保存狀態、記錄軌跡，並偵測發散與收斂。`)));
 
 // ---------- fold 2: cloze / from-scratch practice ----------
@@ -154,6 +154,7 @@ setMode(mode);
 
 const plot = new ContourPlot(plotBox, { maxHeight: 300 });
 plot.setGrid(ex.grid);
+if (ex.region) plot.setRegion(ex.region);
 
 onState((s) => {
   pyStatus.textContent = { idle: "", loading: "Python 載入中…", ready: "Python 已就緒", error: "Python 載入失敗" }[s];
@@ -200,7 +201,7 @@ function show(res) {
   verdict.className = `verdict ${res.passed ? "pass" : "fail"}`;
   const series = [];
   if (res.ref_trace) series.push({ ...res.ref_trace, label: "參考解", color: getComputedStyle(document.documentElement).getPropertyValue("--ink-2").trim(), dash: true });
-  if (res.user_trace) series.push({ ...res.user_trace, label: "你的程式", color: seriesColor(0) });
+  if (res.user_trace) series.push({ ...res.user_trace, label: "你的程式", color: seriesColor(0), dots: !!ex.region });
   plot.setSeries(series);
 }
 

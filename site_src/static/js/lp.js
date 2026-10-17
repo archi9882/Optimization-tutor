@@ -1,0 +1,193 @@
+// LP lab (renderer ②): feasible polygon + iso-objective lines + the path of
+// the method, stepped together with its tableau / central path / working set.
+// First frame comes from build-time data; slider edits re-run optlab.lp in Pyodide.
+
+import { ContourPlot, seriesColor, fmt } from "./plots.js";
+import { call, onState, warmUp } from "./py.js";
+
+const data = JSON.parse(document.getElementById("lp-data").textContent);
+const mount = document.getElementById("lp");
+
+const SLIDERS = {
+  c1: { label: "c₁（x₁ 的係數）", lo: 0.5, hi: 8, index: 0 },
+  c2: { label: "c₂（x₂ 的係數）", lo: 0.5, hi: 8, index: 1 },
+};
+
+const st = {
+  spec: structuredClone(data.spec),
+  res: data.result,
+  frame: 0,
+  playing: false,
+  version: 0,
+};
+
+const h = (tag, attrs = {}, ...kids) => {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v);
+  }
+  el.append(...kids);
+  return el;
+};
+
+// Tableau entries are mostly small fractions; show 1/3 rather than 0.3333.
+function frac(v) {
+  if (Math.abs(v) < 1e-9) return "0";
+  for (let d = 1; d <= 12; d++) {
+    const n = Math.round(v * d);
+    if (Math.abs(v * d - n) < 1e-7) return d === 1 ? String(n) : `${n}/${d}`;
+  }
+  return fmt(v);
+}
+
+function slider(name, value) {
+  const m = SLIDERS[name];
+  const out = h("output", {}, String(value));
+  const input = h("input", { type: "range", min: m.lo, max: m.hi, step: 0.5, value, "aria-label": m.label });
+  input.addEventListener("input", () => {
+    out.textContent = input.value;
+    st.spec.preset_params[name] = Number(input.value);
+    schedule();
+  });
+  return h("label", { class: "slider" }, m.label, input, out);
+}
+
+// ---------- layout ----------
+const pyStatus = h("span", { class: "py-status" });
+const sliders = data.sliders.map((n) => slider(n, st.spec.preset_params[n] ?? st.res.region.c[SLIDERS[n].index]));
+const plotBox = h("div", {}, h("div", { class: "plot-title" }, "可行域（亮區）、等目標值線與路徑"));
+const panelTitle = h("div", { class: "plot-title" });
+const panel = h("div", { class: "lp-panel" });
+const note = h("p", { class: "step-note", "aria-live": "polite" });
+const counter = h("span", { class: "status-line" });
+const resetBtn = h("button", { class: "btn", type: "button", onclick: () => { pause(); setFrame(0); } }, "⏮ 重來");
+const prevBtn = h("button", { class: "btn", type: "button", onclick: () => { pause(); setFrame(st.frame - 1); } }, "◀ 上一步");
+const playBtn = h("button", { class: "btn btn-primary", type: "button", onclick: () => (st.playing ? pause() : play()) }, "▶ 播放");
+const nextBtn = h("button", { class: "btn", type: "button", onclick: () => { pause(); setFrame(st.frame + 1); } }, "下一步 ▶");
+
+mount.append(h("div", { class: "widget lab lp-lab" },
+  h("p", { class: "lp-problem" }, h("strong", {}, st.res.name), " ", h("span", { class: "hint-text" }, st.res.note)),
+  sliders.length ? h("div", { class: "widget-row" }, ...sliders, pyStatus) : "",
+  h("div", { class: "lab-plots" }, plotBox, h("div", {}, panelTitle, panel)),
+  note,
+  h("div", { class: "widget-row" }, resetBtn, prevBtn, playBtn, nextBtn, counter),
+  h("p", { class: "hint-text" }, "滑鼠移到路徑上可以看每一步的座標與目標值；拖動係數滑桿會重新求解。")));
+
+const plot = new ContourPlot(plotBox, { maxHeight: 440 });
+
+onState((s) => {
+  pyStatus.textContent = { idle: "", loading: "Python 載入中…（調整係數會在載入後生效）", ready: "Python 已就緒", error: "Python 載入失敗，只能看預設動畫" }[s];
+  pyStatus.classList.toggle("ready", s === "ready");
+});
+
+// ---------- right-hand panels ----------
+function tableauPanel(k) {
+  const step = st.res.steps[k];
+  const next = st.res.steps[k + 1]?.pivot;
+  const [pr, pc] = next || [-1, -1];
+  const T = step.tableau, cols = step.cols;
+  const head = h("tr", {}, h("th", { scope: "col" }, "基"), ...cols.map((c, j) => h("th", { scope: "col", class: j === pc ? "piv-col" : "" }, c)));
+  const body = T.map((row, i) => {
+    const last = i === T.length - 1;
+    const label = last ? "目標列" : step.basis[i];
+    return h("tr", { class: `${last ? "obj-row" : ""}${i === pr ? " piv-row" : ""}` },
+      h("th", { scope: "row" }, label),
+      ...row.map((v, j) => h("td", { class: `${j === pc ? "piv-col" : ""}${i === pr && j === pc ? " piv-cell" : ""}` }, frac(v))));
+  });
+  const caption = next
+    ? `下一步：${cols[pc]} 進基（欄），${step.basis[pr]} 出基（列），框起來的是樞紐元素。`
+    : st.res.status === "optimal" ? "已達最優，沒有下一個樞紐。" : `停止：${st.res.status}`;
+  panelTitle.textContent = "單純形表（每一步對應圖上的一個頂點）";
+  panel.replaceChildren(h("div", { class: "tableau-wrap" }, h("table", { class: "tableau" }, h("thead", {}, head), h("tbody", {}, ...body))),
+    h("p", { class: "hint-text" }, caption));
+}
+
+function barrierPanel(k) {
+  panelTitle.textContent = "中心路徑上的點（每個 μ 做完牛頓步後）";
+  const rows = st.res.steps.map((s, i) => ({ ...s, i })).filter((s) => s.central && s.i <= k);
+  const cur = st.res.steps[k];
+  panel.replaceChildren(
+    h("div", { class: "tableau-wrap" }, h("table", { class: "tableau" },
+      h("thead", {}, h("tr", {}, ...["步", "μ", "x₁", "x₂", "z"].map((c) => h("th", { scope: "col" }, c)))),
+      h("tbody", {}, ...rows.map((s) => h("tr", { class: s.i === k ? "piv-row" : "" },
+        h("td", {}, String(s.i)), h("td", {}, fmt(s.mu)), h("td", {}, s.x[0].toFixed(4)), h("td", {}, s.x[1].toFixed(4)), h("td", {}, s.z.toFixed(4))))))),
+    h("p", { class: "hint-text" }, `目前 μ = ${fmt(cur.mu)}。μ 越小，障礙越弱，點越靠近邊界上的最優頂點。`));
+}
+
+function activeSetPanel(k) {
+  const s = st.res.steps[k];
+  panelTitle.textContent = "工作集 W（目前當作等式的限制）";
+  const list = s.W.length ? h("ul", { class: "wset" }, ...s.W.map((w) => h("li", {}, w))) : h("p", {}, "W = ∅（不受任何限制）");
+  panel.replaceChildren(list,
+    h("p", { class: "hint-text" }, `目前 x = (${fmt(s.x[0])}, ${fmt(s.x[1])})，目標值 ${fmt(s.z)}。`));
+}
+
+const PANELS = { simplex: tableauPanel, dual_simplex: tableauPanel, barrier: barrierPanel, active_set: activeSetPanel };
+
+// ---------- drawing ----------
+function last() { return st.res.steps.length - 1; }
+
+function setFrame(k) {
+  st.frame = Math.max(0, Math.min(last(), k));
+  plot.setFrame(st.frame);
+  PANELS[st.res.method](st.frame);
+  note.textContent = st.res.steps[st.frame].note;
+  counter.textContent = `第 ${st.frame} / ${last()} 步`;
+  prevBtn.disabled = st.frame === 0;
+  nextBtn.disabled = st.frame === last();
+}
+
+function render() {
+  plot.setGrid(st.res.grid);
+  plot.setRegion(st.res.region);
+  const steps = st.res.steps;
+  plot.setSeries([{
+    xs: steps.map((s) => s.x), fs: steps.map((s) => s.z), status: st.res.status,
+    label: { simplex: "單純形法", dual_simplex: "對偶單純形法", barrier: "內點法", active_set: "有效集法" }[st.res.method],
+    color: seriesColor(0), dots: true, big: steps.map((s) => s.central !== false),
+  }]);
+  setFrame(st.frame);
+}
+
+// ---------- animation ----------
+let timer = null;
+function play() {
+  if (st.frame >= last()) setFrame(0);
+  st.playing = true;
+  playBtn.textContent = "⏸ 暫停";
+  const tick = () => {
+    if (!st.playing) return;
+    if (st.frame >= last()) { pause(); return; }
+    setFrame(st.frame + 1);
+    timer = setTimeout(tick, 1000 / data.speed);
+  };
+  timer = setTimeout(tick, 1000 / data.speed);
+}
+function pause() { st.playing = false; clearTimeout(timer); playBtn.textContent = "▶ 播放"; }
+
+// ---------- live recompute through Pyodide ----------
+let debounce = null;
+function schedule() { clearTimeout(debounce); debounce = setTimeout(recompute, 150); }
+
+async function recompute() {
+  const version = ++st.version;
+  try {
+    const res = await call("lp", st.spec);
+    if (version !== st.version) return;
+    pause();
+    st.res = res;
+    st.frame = last();
+    render();
+  } catch (err) {
+    counter.textContent = `計算失敗：${err.message}`;
+  }
+}
+
+// ---------- boot ----------
+render();
+if (data.sliders.length) warmUp().catch(() => {});
+new IntersectionObserver((entries, obs) => {
+  if (entries.some((e) => e.isIntersecting)) { obs.disconnect(); play(); }
+}, { threshold: 0.4 }).observe(mount);

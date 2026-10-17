@@ -29,7 +29,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from optlab import OPTIMIZERS, api, demos  # noqa: E402
+from optlab import OPTIMIZERS, api, demos, lp as lpmod  # noqa: E402
 from optlab.exercises import EXERCISES  # noqa: E402
 
 CONTENT = ROOT / "content"
@@ -98,14 +98,32 @@ def lab_data(cfg: dict) -> dict:
             "optimizers": {a: optimizer_meta()[a] for a in algos}}
 
 
+def lp_data(cfg: dict) -> dict:
+    """Precompute the LP lab (renderer 2) so it renders before Pyodide loads.
+
+    cfg = {"method": runner id, "preset": LP preset id,
+           "preset_params": {...}, "sliders": [param names], "speed": steps/s}
+    """
+    spec = {"method": cfg["method"], "preset": cfg["preset"],
+            "preset_params": cfg.get("preset_params", {})}
+    return {"spec": spec, "sliders": cfg.get("sliders", []),
+            "speed": cfg.get("speed", 1.0), "result": api.lp_lab(spec)}
+
+
 def practice_data(ex_id: str) -> dict:
-    """Skeleton, hints, solution and demo contour for one exercise."""
+    """Skeleton, hints, solution and the plot background for one exercise."""
     ex = EXERCISES[ex_id]
-    return {"id": ex.id, "func": ex.func_name, "skeleton": ex.skeleton,
-            "hints": ex.hints, "solution": ex.solution,
-            "blanks": list(ex.blanks),
-            "pseudocode": demos.MODULES[ex_id].PSEUDOCODE,
-            "grid": api.problem_grid(ex.demo)}
+    out = {"id": ex.id, "func": ex.func_name, "skeleton": ex.skeleton,
+           "hints": ex.hints, "solution": ex.solution,
+           "blanks": list(ex.blanks), "loop_note": ex.loop_note,
+           "pseudocode": demos.MODULES[ex_id].PSEUDOCODE}
+    if ex.lp_preset:
+        prob = lpmod.make_lp(ex.lp_preset)
+        out["grid"] = lpmod.objective_grid(prob)
+        out["region"] = lpmod.region_data(prob)
+    else:
+        out["grid"] = api.problem_grid(ex.demo)
+    return out
 
 
 def load_catalog() -> dict:
@@ -124,7 +142,7 @@ def load_catalog() -> dict:
         a["children"] = children[a["id"]]
         md = CONTENT / "algorithms" / f"{a['id']}.md"
         meta = split_frontmatter(md.read_text("utf-8"))[0] if md.exists() else {}
-        a["status"] = {"page": md.exists(), "lab": "lab" in meta,
+        a["status"] = {"page": md.exists(), "lab": "lab" in meta or "lp" in meta,
                        "practice": "practice" in meta}
     cat["by_id"] = {a["id"]: a for a in cat["algorithms"]}
     return cat
@@ -206,13 +224,16 @@ def build(out: Path = OUT, vendor: Path | None = None) -> None:
             else ({}, "")
         html = render_markdown(body) if body else ""
         lab = lab_data(meta["lab"]) if "lab" in meta else None
+        lpd = lp_data(meta["lp"]) if "lp" in meta else None
         practice = practice_data(meta["practice"]) if "practice" in meta \
             else None
         html = html.replace("<!-- lab -->", '<div id="lab"></div>')
+        html = html.replace("<!-- lp -->", '<div id="lp"></div>')
         html = html.replace("<!-- practice -->", '<div id="practice"></div>')
         (OUT / "algorithms" / f"{a['id']}.html").write_text(page_tpl.render(
             root="..", a=a, meta=meta, body=html, **bases(".."),
             lab_json=to_script_json(lab) if lab else "",
+            lp_json=to_script_json(lpd) if lpd else "",
             practice_json=to_script_json(practice) if practice else "",
             **common), "utf-8")
 

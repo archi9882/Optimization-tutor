@@ -7,6 +7,7 @@ import json
 
 from .exercises import EXERCISES
 from .grading import grade_source
+from .lp import lp_lab
 from .problems import grid as _grid, make_problem
 from .trace import run_named
 
@@ -44,6 +45,8 @@ def call(name: str, payload_json: str) -> str:
         result = problem_grid(payload)
     elif name == "traces":
         result = traces(payload)
+    elif name == "lp":
+        result = lp_lab(payload)
     elif name == "grade":
         result = grade(payload["exercise"], payload["source"])
     else:

@@ -1,5 +1,7 @@
 // Shared canvas renderers.
-//   ContourPlot     – renderer ①: 2D level sets + optimizer trajectories
+//   ContourPlot     – renderer ①: 2D level sets + optimizer trajectories;
+//                     with setRegion() also renderer ②: feasible polygon,
+//                     constraint lines and iso-objective lines for LP/QP
 //   ConvergencePlot – f(x_k) − f* on a log axis, one line per optimizer
 // Both read colors from CSS custom properties so they follow the theme.
 
@@ -86,16 +88,111 @@ export class ContourPlot {
     const z = grid.z.flat();
     const zmin = Math.min(...z), zmax = Math.max(...z);
     const eps = (zmax - zmin) * 1e-5 + 1e-12;
-    this.t = grid.z.map((row) => row.map((v) => Math.log10(v - zmin + eps)));
+    // Linear objectives: evenly spaced (parallel, equidistant) iso-lines.
+    this.t = grid.linear ? grid.z : grid.z.map((row) => row.map((v) => Math.log10(v - zmin + eps)));
     const sorted = this.t.flat().sort((a, b) => a - b);
     const lo = sorted[Math.floor(sorted.length * 0.01)], hi = sorted[Math.floor(sorted.length * 0.99)];
-    this.levels = Array.from({ length: 16 }, (_, k) => lo + ((hi - lo) * (k + 0.5)) / 16);
+    const nLev = grid.linear ? 12 : 16;
+    this.levels = Array.from({ length: nLev }, (_, k) => lo + ((hi - lo) * (k + 0.5)) / nLev);
     this.segs = this.levels.map((lv) => isoSegments(this.t, lv));
     this.canvas.setAttribute("aria-label", `${grid.name} 的等高線圖與最佳化路徑`);
     this.resize();
   }
 
   setSeries(series) { this.series = series; this.draw(); }
+
+  // Renderer ②: {polygon, constraints: [{a, b, label}], target}.
+  setRegion(region) { this.region = region; this.cache = null; this.draw(); }
+
+  // Segment of the line a·x = b inside the view box, or null.
+  clipLine(a, b) {
+    const [x0, x1, y0, y1] = this.grid.bounds;
+    const pts = [];
+    if (Math.abs(a[1]) > 1e-12) for (const x of [x0, x1]) pts.push([x, (b - a[0] * x) / a[1]]);
+    if (Math.abs(a[0]) > 1e-12) for (const y of [y0, y1]) pts.push([(b - a[1] * y) / a[0], y]);
+    const inside = pts.filter(([x, y]) => x >= x0 - 1e-9 && x <= x1 + 1e-9 && y >= y0 - 1e-9 && y <= y1 + 1e-9);
+    if (inside.length < 2) return null;
+    inside.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+    return [inside[0], inside[inside.length - 1]];
+  }
+
+  drawRegion(c) {
+    const r = this.region;
+    // Dim everything outside the feasible polygon.
+    if (r.polygon.length) {
+      c.save();
+      c.beginPath();
+      c.rect(0, 0, this.w, this.h);
+      r.polygon.forEach(([x, y], i) => { const [px, py] = this.toPx(x, y); i ? c.lineTo(px, py) : c.moveTo(px, py); });
+      c.closePath();
+      c.fillStyle = css("--surface");
+      c.globalAlpha = 0.72;
+      c.fill("evenodd");
+      c.globalAlpha = 0.10;
+      c.fillStyle = css("--accent");
+      c.beginPath();
+      r.polygon.forEach(([x, y], i) => { const [px, py] = this.toPx(x, y); i ? c.lineTo(px, py) : c.moveTo(px, py); });
+      c.closePath();
+      c.fill();
+      c.restore();
+    }
+    // Axes x1 = 0 and x2 = 0.
+    c.save();
+    c.strokeStyle = css("--axis");
+    c.lineWidth = 1;
+    const [ax, ay] = this.toPx(0, 0);
+    c.beginPath(); c.moveTo(0, ay); c.lineTo(this.w, ay); c.moveTo(ax, 0); c.lineTo(ax, this.h); c.stroke();
+    c.font = `11px ${css("--font")}`;
+    c.fillStyle = css("--muted");
+    if (r.var_labels) {
+      c.textAlign = "right"; c.textBaseline = "bottom";
+      c.fillText(r.var_labels[0], this.w - 4, ay - 3);
+      c.textAlign = "left"; c.textBaseline = "top";
+      c.fillText(r.var_labels[1], ax + 4, 3);
+    }
+    c.restore();
+    // Constraint lines with their resource name.
+    c.save();
+    c.font = `12px ${css("--font")}`;
+    r.constraints.forEach((con, k) => {
+      const seg = this.clipLine(con.a, con.b);
+      if (!seg) return;
+      const [p, q] = seg.map(([x, y]) => this.toPx(x, y));
+      c.strokeStyle = css("--ink-2");
+      c.lineWidth = 1.25;
+      c.setLineDash([6, 4]);
+      c.beginPath(); c.moveTo(...p); c.lineTo(...q); c.stroke();
+      c.setLineDash([]);
+      // Label near the upper end of the line, nudged inside the canvas.
+      const top = p[1] < q[1] ? p : q, other = top === p ? q : p;
+      const u = 0.12 + 0.06 * k;
+      let lx = top[0] + (other[0] - top[0]) * u, ly = top[1] + (other[1] - top[1]) * u;
+      const name = con.label.split("：")[0];
+      const tw = c.measureText(name).width;
+      lx = Math.max(4, Math.min(this.w - tw - 8, lx + 6));
+      ly = Math.max(14, Math.min(this.h - 6, ly));
+      c.fillStyle = css("--surface");
+      c.globalAlpha = 0.85;
+      c.fillRect(lx - 2, ly - 12, tw + 4, 15);
+      c.globalAlpha = 1;
+      c.fillStyle = css("--ink-2");
+      c.textAlign = "left"; c.textBaseline = "alphabetic";
+      c.fillText(name, lx, ly);
+    });
+    c.restore();
+    if (r.target) {
+      const [tx, ty] = this.toPx(...r.target);
+      c.save();
+      c.strokeStyle = css("--ink-2");
+      c.lineWidth = 1.5;
+      c.beginPath(); c.arc(tx, ty, 6, 0, 7); c.moveTo(tx - 9, ty); c.lineTo(tx + 9, ty); c.moveTo(tx, ty - 9); c.lineTo(tx, ty + 9); c.stroke();
+      c.font = `12px ${css("--font")}`;
+      c.fillStyle = css("--ink-2");
+      c.textAlign = "right"; c.textBaseline = "middle";
+      c.fillText("目標", tx - 10, ty);
+      c.restore();
+    }
+  }
   setFrame(k) { this.frame = k; this.draw(); }
 
   resize() {
@@ -146,6 +243,7 @@ export class ContourPlot {
       c.stroke();
     });
     c.globalAlpha = 1;
+    if (this.region) this.drawRegion(c);
     c.strokeStyle = css("--ink-2");
     c.lineWidth = 1.5;
     for (const m of this.grid.minima) {
@@ -183,6 +281,14 @@ export class ContourPlot {
       });
       c.stroke();
       c.setLineDash([]);
+      if (s.dots) {
+        // Every visited point (simplex vertices, barrier iterates).
+        c.fillStyle = s.color;
+        s.xs.slice(0, n).forEach(([x, y], i) => {
+          const [px, py] = this.toPx(x, y);
+          c.beginPath(); c.arc(px, py, s.big && s.big[i] ? 4 : 2.5, 0, 7); c.fill();
+        });
+      }
       // start point
       const [sx0, sy0] = this.toPx(...s.xs[0]);
       c.fillStyle = surface; c.beginPath(); c.arc(sx0, sy0, 4, 0, 7); c.fill();
@@ -244,11 +350,13 @@ export class ContourPlot {
     if (best) {
       const [x, y] = best.s.xs[best.k];
       const f = best.s.fs ? best.s.fs[best.k] : this.fAt(x, y);
-      this.tip.textContent = `${best.s.label} · 第 ${best.k} 步 · f = ${fmt(f)}`;
+      const fl = this.grid.flabel || "f";
+      this.tip.textContent = `${best.s.label} · 第 ${best.k} 步 · (${fmt(x)}, ${fmt(y)}) · ${fl} = ${fmt(f)}`;
       this.tip.style.left = `${best.qx}px`; this.tip.style.top = `${best.qy}px`;
     } else {
       const [x, y] = this.toData(px, py);
-      this.tip.textContent = `(${x.toFixed(2)}, ${y.toFixed(2)})  f ≈ ${fmt(this.fAt(x, y))}${this.pickCb ? "  · 點擊設為起點" : ""}`;
+      const fl = this.grid.flabel || "f", sign = this.grid.sign || 1;
+      this.tip.textContent = `(${x.toFixed(2)}, ${y.toFixed(2)})  ${fl} ≈ ${fmt(sign * this.fAt(x, y))}${this.pickCb ? "  · 點擊設為起點" : ""}`;
       this.tip.style.left = `${px}px`; this.tip.style.top = `${py}px`;
     }
     this.tip.hidden = false;

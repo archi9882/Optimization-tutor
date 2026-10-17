@@ -41,9 +41,11 @@
   {% endif %}
 </article>
 {% if lab_json %}<script type="application/json" id="lab-data">{{ lab_json|safe }}</script>{% endif %}
+{% if lp_json %}<script type="application/json" id="lp-data">{{ lp_json|safe }}</script>{% endif %}
 {% if practice_json %}<script type="application/json" id="practice-data">{{ practice_json|safe }}</script>{% endif %}
 {% endblock %}
 {% block scripts %}
 {% if lab_json %}<script type="module" src="{{ root }}/static/js/lab.js"></script>{% endif %}
+{% if lp_json %}<script type="module" src="{{ root }}/static/js/lp.js"></script>{% endif %}
 {% if practice_json %}<script type="module" src="{{ root }}/static/js/practice.js"></script>{% endif %}
 {% endblock %}
