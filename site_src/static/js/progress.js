@@ -167,7 +167,9 @@ export function mastery(id, cardCount = 0, state = load()) {
   let known = 0;
   for (let i = 1; i <= cardCount; i++) {
     const c = state.cards[`${id}#q${i}`];
-    if (c && c.history.length && c.history[c.history.length - 1].grade === 2) known++;
+    // Counts only if the card has climbed at least one box: a 會 pressed right
+    // after 忘了 on the same day is not yet remembered knowledge.
+    if (c && c.box >= 1 && c.history.length && c.history[c.history.length - 1].grade === 2) known++;
   }
   const ratio = cardCount ? known / cardCount : 1;
   const touched = id in state.visits || !!p ||
@@ -194,8 +196,12 @@ function safeParse(text) {
 }
 
 const isObj = (o) => o !== null && typeof o === "object" && !Array.isArray(o);
-const isTs = (t) => typeof t === "number" && Number.isFinite(t) && t >= 0;
+// Timestamps must be real and not in the future (one day of clock skew allowed).
+const isTs = (t) => typeof t === "number" && Number.isFinite(t) && t >= 0 && t <= Date.now() + 864e5;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+// A calendar day that exists (rejects 9999-99-99, 0000-00-00) within a sane range.
+const isDay = (d) => typeof d === "string" && DAY_RE.test(d) && d >= "2000-01-01" && d <= "2200-12-31" &&
+  dayStr(new Date(`${d}T12:00:00`).getTime()) === d;
 
 /** Validate an untrusted object; returns {ok, state} or {ok: false, error}. */
 export function validate(obj) {
@@ -218,7 +224,7 @@ export function validate(obj) {
   }
   for (const [id, c] of Object.entries(obj.cards || {})) {
     if (!isObj(c) || !Number.isInteger(c.box) || c.box < 0 || c.box >= INTERVALS.length ||
-        typeof c.due !== "string" || !DAY_RE.test(c.due) || !Array.isArray(c.history) ||
+        !isDay(c.due) || !Array.isArray(c.history) || c.history.length === 0 ||
         !c.history.every((h) => isObj(h) && isTs(h.ts) && [0, 1, 2].includes(h.grade))) {
       return fail(`cards.${id} 格式錯誤。`);
     }

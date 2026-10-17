@@ -19,7 +19,7 @@
       {% if a.children %}<span>延伸出：{% for c in a.children %}<a href="{{ c }}.html">{{ cat.by_id[c].name }}</a>{% if not loop.last %}、{% endif %}{% endfor %}</span>{% endif %}
     </div>
     {% endif %}
-    {% if body %}<p class="mastery" id="mastery" aria-live="polite" hidden></p>{% endif %}
+    {% if body %}<p class="mastery" id="mastery" hidden></p>{% endif %}
     {% if meta.review == "draft" %}
     <p class="draft-note" role="note">AI 草稿：本頁由 AI 起草，作者尚未逐段審閱。文中數值皆為本站程式實際執行的結果。</p>
     {% endif %}

@@ -11,7 +11,7 @@ SKELETON = demos.helpers_source("nelder_mead") + '''def nelder_mead_step(simplex
     simplex: 3 個頂點的 list（每個是長度 2 的 tuple）
     fvals:   對應的函數值（已經算好，不要重算）
     f:       目標函數；每呼叫一次就算一次「昂貴」的函數計算
-    回傳:    (新的頂點 list, 新的函數值 list)，順序不限
+    回傳:    (新的頂點 list, 新的函數值 list)，頂點順序不限（但兩個 list 要一一對應）
     可以使用上面的 along(c, w, t)。
     """
     # TODO 1: 依 fvals 由好到差排序；c = 除最差點外的重心
@@ -35,6 +35,21 @@ def _cap(p):
 
 _S = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]
 
+# A deliberately bumpy function (table values, bowl elsewhere): the reflected
+# point is between second-worst and worst, the outside contraction point is
+# worse than the reflected one, so the step must shrink.
+_TABLE = {(0.0, 1.0): 4.0, (1.0, -1.0): 2.0, (0.75, -0.5): 3.0}
+
+
+def _bumpy(p):
+    return _TABLE.get((round(p[0], 9) + 0.0, round(p[1], 9) + 0.0), p[0] ** 2 + p[1] ** 2)
+
+
+def _as_set(out):
+    """Unordered simplex: sort (vertex, f) pairs so any vertex order compares equal."""
+    pts, fs = out
+    return sorted(zip([tuple(float(v) for v in p) for p in pts], [float(v) for v in fs]))
+
 EXERCISE = Exercise(
     id="nelder_mead",
     func_name="nelder_mead_step",
@@ -51,16 +66,19 @@ EXERCISE = Exercise(
         StepCase("接受反射：f(x_r) = 4 介於最好與次差之間",
                  {"simplex": [(1.0, 1.0), (2.0, 1.0), (1.0, 2.0)],
                   "fvals": [2.0, 5.0, 5.0], "f": _bowl},
-                 ([(1.0, 1.0), (2.0, 1.0), (2.0, 0.0)], [2.0, 5.0, 4.0])),
+                 ([(1.0, 1.0), (2.0, 1.0), (2.0, 0.0)], [2.0, 5.0, 4.0]), normalize=_as_set),
         StepCase("擴張：反射點比最好點還好，再往前走一倍",
                  {"simplex": _S, "fvals": [18.0, 13.0, 25.0], "f": _far},
-                 ([(1.0, 0.0), (0.0, 0.0), (1.5, -2.0)], [13.0, 18.0, 3.25])),
+                 ([(1.0, 0.0), (0.0, 0.0), (1.5, -2.0)], [13.0, 18.0, 3.25]), normalize=_as_set),
         StepCase("內側收縮：反射點比最差點還差",
                  {"simplex": _S, "fvals": [0.0, 1.0, 1.0], "f": _bowl},
-                 ([(0.0, 0.0), (1.0, 0.0), (0.25, 0.5)], [0.0, 1.0, 0.3125])),
+                 ([(0.0, 0.0), (1.0, 0.0), (0.25, 0.5)], [0.0, 1.0, 0.3125]), normalize=_as_set),
         StepCase("縮小：收縮點也不夠好，全部往最好點 (1, 0) 縮一半",
                  {"simplex": _S, "fvals": [0.0, -2.0, -1.0], "f": _cap},
-                 ([(1.0, 0.0), (0.5, 0.5), (0.5, 0.0)], [-2.0, 0.5, -0.25])),
+                 ([(1.0, 0.0), (0.5, 0.5), (0.5, 0.0)], [-2.0, 0.5, -0.25]), normalize=_as_set),
+        StepCase("外側收縮點比反射點還差：不接受，改成縮小",
+                 {"simplex": _S, "fvals": [0.0, 1.0, 4.0], "f": _bumpy},
+                 ([(0.0, 0.0), (0.5, 0.0), (0.0, 0.5)], [0.0, 0.25, 0.25]), normalize=_as_set),
     ],
     adapter=DEMO.adapter,
     reference=DEMO.FUNC,

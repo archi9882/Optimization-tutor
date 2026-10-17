@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 
 from .optimizers import OPTIMIZERS, StepFn
-from .problems import Problem, Vec, make_problem
+from .problems import Problem, Vec, make_problem, violation
 
 DIVERGE_AT = 1e6
 
@@ -25,6 +25,13 @@ def run(step: StepFn, problem: Problem, x0: Vec, params: dict,
                    out["poly"][k] belongs to xs[k]; poly_kind "open" draws a
                    polyline instead of a filled polygon
       evals        cumulative number of f evaluations -> out["evals"]
+      info         {name: number or list} describing the step (rho, mu, lambda,
+                   gap, ...) -> out["info"][k] belongs to xs[k] (info[0] is None)
+      outer_end    True when the new iterate ends an outer iteration of a
+                   penalty / barrier / multiplier method -> out["outer"][k]
+
+    Constrained problems never stop on a small gradient (grad f != 0 at a
+    constrained optimum); they report the final constraint violation.
     """
     x = (float(x0[0]), float(x0[1]))
     state: dict = {}
@@ -33,6 +40,8 @@ def run(step: StepFn, problem: Problem, x0: Vec, params: dict,
     status = "max_iter"
     radii: list[float] = []             # trust-region radius used at each step
     polys: list = []                    # per-iterate geometry (see docstring)
+    infos: list = [None]
+    outer: list[bool] = [False]
     for _ in range(n_iter):
         x, state = step(x, problem, state, params)
         if "radius_used" in state:
@@ -43,12 +52,15 @@ def run(step: StepFn, problem: Problem, x0: Vec, params: dict,
             break
         xs.append(list(x))
         fs.append(problem.f(x))
+        if "info" in state:
+            infos.append(state["info"])
+        outer.append(bool(state.get("outer_end")))
         if "poly" in state:
             if not polys:
                 polys.append(state.get("poly_used"))
             polys.append(state["poly"])
         g = problem.grad(x)
-        if math.hypot(g[0], g[1]) < tol:
+        if not problem.constraints and math.hypot(g[0], g[1]) < tol:
             status = "converged"
             break
         if state.get("stop"):
@@ -63,6 +75,14 @@ def run(step: StepFn, problem: Problem, x0: Vec, params: dict,
             out["poly_kind"] = state["poly_kind"]
     if "evals" in state:
         out["evals"] = state["evals"]
+    if len(infos) > 1:
+        out["info"] = infos
+    if any(outer):
+        out["outer"] = outer
+    if problem.constraints:
+        out["violation"] = violation(problem, tuple(xs[-1]))
+        if "message" in state:
+            out["message"] = state["message"]
     return out
 
 

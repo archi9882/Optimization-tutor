@@ -175,7 +175,7 @@ hintBtn.addEventListener("click", () => {
 });
 
 confirmTwice(ansBtn, "看答案", "再按一次顯示答案", () => {
-  saved.revealed = { ...(saved.revealed || {}), [mode]: true };
+  saved.revealed = true;          // for the whole exercise, not just this mode
   if (mode === "cloze") {
     const order = parts.filter((p) => typeof p !== "string");
     inputs.forEach((input, i) => {
@@ -190,7 +190,7 @@ confirmTwice(ansBtn, "看答案", "再按一次顯示答案", () => {
   }
 });
 confirmTwice(resetBtn, "清除", "再按一次清除", () => {
-  if (saved.revealed) saved.revealed[mode] = false;
+  saved.revealed = false;
   if (mode === "cloze") {
     inputs.forEach((input, i) => { input.value = ""; saved.blanks[i] = ""; input.classList.remove("revealed"); });
   } else {
@@ -215,7 +215,10 @@ function show(res) {
 
 // A pass right after 「看答案」 is not counted: mastery rewards recall, not copying.
 function record(passed) {
-  if (passed && saved.revealed?.[mode]) {
+  // Older saves stored {cloze, scratch}; any truthy value counts as revealed.
+  const revealed = saved.revealed === true ||
+    (typeof saved.revealed === "object" && saved.revealed && Object.values(saved.revealed).some(Boolean));
+  if (passed && revealed) {
     progressNote.textContent = "看過答案後的通過不計入熟練度；按「清除」重做一次就會記錄。";
     return;
   }

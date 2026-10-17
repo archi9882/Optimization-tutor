@@ -48,7 +48,7 @@ EXERCISE = Exercise(
         "刪除第 k 個元素再加到最後：dirs[:k] + dirs[k + 1:] + [u]。",
     ],
     solution=demos.source("powell"),
-    blanks=("fx - f_new > biggest", "x[0] - x_start[0]",
+    blanks=("fx - f_new > biggest", "(x[0] - x_start[0], x[1] - x_start[1])",
             "dirs[:k_big] + dirs[k_big + 1:] + [u]"),
     cases=[
         StepCase("f = x² + 2y²：沿 y 下降較多，丟掉 e₂",

@@ -41,7 +41,9 @@ def golden_section(phi, a, b, tol=1e-8):
     r = (math.sqrt(5) - 1) / 2           # 0.618…
     c, d = b - r * (b - a), a + r * (b - a)
     fc, fd = phi(c), phi(d)
-    while b - a > tol:
+    for _ in range(200):                 # 安全上限：區間離原點極遠時，浮點數無法再縮到 tol
+        if b - a <= tol:
+            break
         if fc < fd:                      # 極小值在 [a, d]
             b, d, fd = d, c, fc
             c = b - r * (b - a)

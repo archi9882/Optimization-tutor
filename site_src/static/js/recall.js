@@ -27,8 +27,8 @@ export function dueText(due) {
 }
 
 function metaText(c) {
-  if (!c) return "還沒複習過這題。";
-  const last = c.history[c.history.length - 1];
+  const last = c && c.history[c.history.length - 1];
+  if (!last) return "還沒複習過這題。";
   return `上次：${GRADE_LABELS[last.grade]}・下次複習 ${dueText(c.due)}`;
 }
 

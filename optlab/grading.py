@@ -26,6 +26,9 @@ class StepCase:
     args: dict
     expected: tuple  # tuple of expected vectors (one entry = bare vector)
     func: str | None = None  # call this learner function instead of func_name
+    # Applied to both the learner's output and the expected value before
+    # comparing, e.g. to ignore the order of an unordered result.
+    normalize: Callable | None = None
 
 
 @dataclass(frozen=True)
@@ -121,6 +124,8 @@ def grade(ex: Exercise, fn: Callable | dict) -> dict:
             want = case.expected[0] if len(case.expected) == 1 else case.expected
             if out is None and want is not None:
                 raise TypeError("函式回傳了 None，是不是忘了 return？")
+            if case.normalize is not None:
+                out, want = case.normalize(out), case.normalize(want)
             ok = same(out, want)
             msg = "通過" if ok else f"預期 {_fmt(want)}，得到 {_fmt(out)}"
         except Exception as exc:  # learner code may raise anything

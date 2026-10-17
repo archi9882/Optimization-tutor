@@ -20,6 +20,16 @@ SKELETON = demos.helpers_source("pattern_search") + '''def compass_step(x, fx, s
 '''
 
 
+def _tilt(p):
+    """Improves toward −x and (more) toward +y: the polling order decides."""
+    return 10.0 + p[0] - 2.0 * p[1]
+
+
+def _flat(p):
+    """A plateau: equal values are not an improvement."""
+    return 0.0
+
+
 def _bowl(p):
     return p[0] ** 2 + p[1] ** 2
 
@@ -45,6 +55,12 @@ EXERCISE = Exercise(
                  ((0.5, 1.0), 1.25, 0.5)),
         StepCase("四個方向都失敗：原地不動、步長減半",
                  {"x": (0.0, 0.0), "fx": 0.0, "step": 0.5, "f": _bowl},
+                 ((0.0, 0.0), 0.0, 0.25)),
+        StepCase("依 DIRECTIONS 的順序：−x 先成功就移動，不再看 +y",
+                 {"x": (0.0, 0.0), "fx": 10.0, "step": 1.0, "f": _tilt},
+                 ((-1.0, 0.0), 9.0, 1.0)),
+        StepCase("平台上函數值相同不算改善：步長減半",
+                 {"x": (0.0, 0.0), "fx": 0.0, "step": 0.5, "f": _flat},
                  ((0.0, 0.0), 0.0, 0.25)),
         StepCase("前三個方向失敗，最後的 −y 成功",
                  {"x": (0.0, 0.0), "fx": 1.0, "step": 1.0, "f": _low},

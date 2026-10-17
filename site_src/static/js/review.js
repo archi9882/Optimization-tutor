@@ -47,7 +47,8 @@ function buildQueue(state) {
 function nextDue(state) {
   const day = P.today();
   const dates = Object.entries(state.cards).filter(([id]) => cardsById[id]).map(([, c]) => c.due)
-    .concat(Object.keys(state.practice).map((id) => P.practiceDue(id, state)?.due).filter(Boolean))
+    .concat(Object.keys(state.practice).filter((id) => data.algos[id])
+      .map((id) => P.practiceDue(id, state)?.due).filter(Boolean))
     .filter((d) => d > day).sort();
   return dates.length ? { due: dates[0], n: dates.filter((d) => d === dates[0]).length } : null;
 }
