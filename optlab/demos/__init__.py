@@ -12,8 +12,9 @@ from types import ModuleType
 
 from . import (active_set, adagrad, adam, barrier, bfgs, branch_bound, coordinate,
                cutting_plane, dual_simplex, dynamic_programming, gauss_newton, gd,
-               greedy, hungarian, lbfgs, lm, momentum, ncg, nesterov, newton, rmsprop,
-               sgd, simplex, tabu, trust_region, two_opt)
+               greedy, hungarian, lbfgs, lm, momentum, ncg, nelder_mead, nesterov,
+               newton, pattern_search, powell, rmsprop, sgd, simplex, tabu,
+               trust_region, two_opt)
 
 MODULES: dict[str, ModuleType] = {
     "gd": gd, "sgd": sgd, "momentum": momentum, "nesterov": nesterov,
@@ -26,6 +27,7 @@ MODULES: dict[str, ModuleType] = {
     "branch_bound": branch_bound, "cutting_plane": cutting_plane,
     "dynamic_programming": dynamic_programming, "greedy": greedy,
     "hungarian": hungarian, "two_opt": two_opt, "tabu": tabu,
+    "nelder_mead": nelder_mead, "powell": powell, "pattern_search": pattern_search,
 }
 
 

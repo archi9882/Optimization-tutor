@@ -17,9 +17,10 @@ document.querySelector(".theme-toggle")?.addEventListener("click", () => {
 matchMedia("(prefers-color-scheme: dark)")
   .addEventListener("change", () => window.dispatchEvent(new CustomEvent("ot-theme")));
 
-function renderMath() {
+/** Typeset $...$ math inside `el` (default: <main>); false if KaTeX is not loaded yet. */
+export function renderMath(el = document.querySelector("main")) {
   if (!window.renderMathInElement) return false;
-  window.renderMathInElement(document.querySelector("main"), {
+  window.renderMathInElement(el, {
     delimiters: [
       { left: "$$", right: "$$", display: true },
       { left: "$", right: "$", display: false },
@@ -29,4 +30,4 @@ function renderMath() {
   return true;
 }
 
-if (!renderMath()) window.addEventListener("load", renderMath, { once: true });
+if (!renderMath()) window.addEventListener("load", () => renderMath(), { once: true });

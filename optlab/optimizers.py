@@ -96,5 +96,13 @@ OPTIMIZERS: dict[str, Optimizer] = {
         Optimizer("trust_region", "信賴域 (dogleg)",
                   [Param("radius0", 0.5, 0.05, 3.0, True, "初始半徑 Δ₀")],
                   lab_step("trust_region")),
+        # ---- derivative-free ----
+        Optimizer("nelder_mead", "Nelder-Mead",
+                  [Param("size", 0.5, 0.05, 2.0, True, "初始單純形邊長")],
+                  lab_step("nelder_mead")),
+        Optimizer("powell", "Powell", [], lab_step("powell")),
+        Optimizer("pattern_search", "模式搜尋",
+                  [Param("step0", 0.5, 0.01, 2.0, True, "初始步長 h₀")],
+                  lab_step("pattern_search")),
     ]
 }

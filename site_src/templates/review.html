@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}複習 — Optimization Tutor{% endblock %}
+{% block description %}今日到期的面試追問回想卡與待重做的練習，以及你的學習進度。{% endblock %}
+{% block content %}
+<section class="hero review-hero">
+  <h1>今日複習</h1>
+  <p class="lede">先回想、再看答案，最後誠實自評。答「會」的題目間隔會拉長（1、2、7、21、60 天），忘了就從頭再來。進度只存在這台裝置的瀏覽器裡。</p>
+</section>
+
+<section class="review-queue" aria-labelledby="queue-title">
+  <h2 id="queue-title" class="review-h2">待複習 <span id="queue-count" class="count"></span></h2>
+  <div id="queue" aria-live="polite">
+    <noscript><p class="empty">複習功能需要啟用 JavaScript。各演算法頁面的「面試追問」仍可直接展開閱讀。</p></noscript>
+  </div>
+</section>
+
+<section class="progress-panel" aria-labelledby="progress-title">
+  <h2 id="progress-title" class="review-h2">進度</h2>
+  <p class="hint-text">只計已有內容的頁面。熟悉＝練習三層全過；熟練＝隔兩天以上再通過一次，且面試追問七成以上答「會」。</p>
+  <div id="progress-table"></div>
+  <h3 class="review-h3">備份與還原</h3>
+  <div class="widget-row">
+    <button type="button" class="btn" id="export-btn">匯出進度（JSON）</button>
+    <label class="btn file-btn">從檔案匯入<input type="file" id="import-file" accept="application/json,.json" class="sr-only"></label>
+    <button type="button" class="btn" id="clear-btn">清除全部進度</button>
+  </div>
+  <details class="paste-box">
+    <summary>貼上 JSON 匯入</summary>
+    <textarea id="import-text" class="editor import-text" spellcheck="false" aria-label="貼上進度 JSON"></textarea>
+    <button type="button" class="btn" id="import-paste">匯入貼上的內容</button>
+  </details>
+  <p id="io-status" class="io-status" role="status"></p>
+</section>
+<script type="application/json" id="review-data">{{ review_json|safe }}</script>
+{% endblock %}
+{% block scripts %}<script type="module" src="{{ root }}/static/js/review.js"></script>{% endblock %}

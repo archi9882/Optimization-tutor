@@ -26,8 +26,11 @@ from .lbfgs import EXERCISE as LBFGS
 from .lm import EXERCISE as LM
 from .momentum import EXERCISE as MOMENTUM
 from .ncg import EXERCISE as NCG
+from .nelder_mead import EXERCISE as NELDER_MEAD
 from .nesterov import EXERCISE as NESTEROV
 from .newton import EXERCISE as NEWTON
+from .pattern_search import EXERCISE as PATTERN_SEARCH
+from .powell import EXERCISE as POWELL
 from .rmsprop import EXERCISE as RMSPROP
 from .sgd import EXERCISE as SGD
 from .simplex import EXERCISE as SIMPLEX
@@ -39,7 +42,8 @@ EXERCISES: dict[str, Exercise] = {e.id: e for e in [
     GD, SGD, MOMENTUM, NESTEROV, ADAGRAD, RMSPROP, ADAM, COORDINATE,
     NEWTON, GAUSS_NEWTON, LM, BFGS, LBFGS, NCG, TRUST_REGION,
     SIMPLEX, DUAL_SIMPLEX, BARRIER, ACTIVE_SET,
-    BRANCH_BOUND, CUTTING_PLANE, DYNAMIC_PROGRAMMING, GREEDY, HUNGARIAN, TWO_OPT, TABU]}
+    BRANCH_BOUND, CUTTING_PLANE, DYNAMIC_PROGRAMMING, GREEDY, HUNGARIAN, TWO_OPT, TABU,
+    NELDER_MEAD, POWELL, PATTERN_SEARCH]}
 
 
 def grade_json(exercise_id: str, source: str) -> str:

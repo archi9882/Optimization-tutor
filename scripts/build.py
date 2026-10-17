@@ -9,11 +9,13 @@
 where pages may not fetch from CDNs (e.g. a claude.ai Artifact).
 
 Inputs:  content/catalog.yaml, content/algorithms/*.md, site_src/, optlab/
-Output:  _site/ (ready for GitHub Pages)
+Output:  _site/ (ready for GitHub Pages), including review.html, whose
+         recall cards are extracted here from each page's 面試追問 section.
 """
 from __future__ import annotations
 
 import argparse
+import html as htmlmod
 import http.server
 import json
 import re
@@ -65,6 +67,40 @@ def render_markdown(body: str) -> str:
     return re.sub(r"\x00M(\d+)\x00",
                   lambda m: "".join(escape.get(c, c)
                                     for c in stash[int(m.group(1))]), html)
+
+
+RECALL_HEADING = "面試追問"
+RECALL_SECTION_RE = re.compile(
+    r"(<h2[^>]*>\s*" + RECALL_HEADING + r"\s*</h2>)(.*?)(?=<h2[\s>]|\Z)", re.S)
+DETAILS_RE = re.compile(r"<details>\s*<summary>(.*?)</summary>(.*?)</details>", re.S)
+TAG_RE = re.compile(r"<[^>]+>")
+
+
+def extract_recall(algo_id: str, html: str) -> tuple[str, list[dict]]:
+    """Find the 面試追問 Q&A of a rendered page and turn them into recall cards.
+
+    Returns (html, cards). In the returned html each <details> of that section
+    carries class="recall" and data-card="<algo>#q<n>" so the page script can
+    turn it into a card; without JS it stays a plain <details>. Each card is
+    {id, algo, n, q (plain text), q_html, a_html}.
+    """
+    m = RECALL_SECTION_RE.search(html)
+    if not m:
+        return html, []
+    cards: list[dict] = []
+
+    def mark(d: re.Match) -> str:
+        n = len(cards) + 1
+        cid = f"{algo_id}#q{n}"
+        q_html, a_html = d.group(1).strip(), d.group(2).strip()
+        cards.append({"id": cid, "algo": algo_id, "n": n,
+                      "q": htmlmod.unescape(TAG_RE.sub("", q_html)).strip(),
+                      "q_html": q_html, "a_html": a_html})
+        return (f'<details class="recall" data-card="{cid}">'
+                f"<summary>{q_html}</summary>\n{a_html}\n</details>")
+
+    section = DETAILS_RE.sub(mark, m.group(2))
+    return html[:m.start(2)] + section + html[m.end(2):], cards
 
 
 def to_script_json(obj: object) -> str:
@@ -131,6 +167,15 @@ def practice_data(ex_id: str) -> dict:
     elif ex.demo:
         out["grid"] = api.problem_grid(ex.demo)
     return out
+
+
+def review_data(cat: dict, cards: list[dict]) -> dict:
+    """Build-time data for review.html: every recall card plus page metadata."""
+    algos = {a["id"]: {"name": a["name"], "family": a["family"],
+                       "cards": a.get("n_cards", 0),
+                       "practice": a["status"]["practice"]}
+             for a in cat["algorithms"] if a["status"]["page"]}
+    return {"families": cat["families"], "algos": algos, "cards": cards}
 
 
 def load_catalog() -> dict:
@@ -216,21 +261,16 @@ def build(out: Path = OUT, vendor: Path | None = None) -> None:
 
     common = {"cat": cat}
 
-    cards = [{k: a[k] for k in ("id", "name", "en", "family", "problem",
-                                 "info", "domains", "summary", "status")}
-             for a in cat["algorithms"]]
-    index = env.get_template("index.html").render(
-        root=".", cards_json=to_script_json(cards), **bases("."), **common)
-    if vendor:
-        index = WRAPPER_RE.sub("", index)
-    (OUT / "index.html").write_text(index, "utf-8")
-
     page_tpl = env.get_template("algorithm.html")
+    all_cards: list[dict] = []
     for a in cat["algorithms"]:
         md = CONTENT / "algorithms" / f"{a['id']}.md"
         meta, body = split_frontmatter(md.read_text("utf-8")) if md.exists() \
             else ({}, "")
         html = render_markdown(body) if body else ""
+        html, recall = extract_recall(a["id"], html)
+        a["n_cards"] = len(recall)
+        all_cards.extend(recall)
         lab = lab_data(meta["lab"]) if "lab" in meta else None
         lpd = lp_data(meta["lp"]) if "lp" in meta else None
         combod = combo_data(meta["combo"]) if "combo" in meta else None
@@ -248,9 +288,31 @@ def build(out: Path = OUT, vendor: Path | None = None) -> None:
             practice_json=to_script_json(practice) if practice else "",
             **common), "utf-8")
 
+    cards = [{k: a[k] for k in ("id", "name", "en", "family", "problem",
+                                 "info", "domains", "summary", "status")}
+             | {"cards": a["n_cards"]}
+             for a in cat["algorithms"]]
+    index = env.get_template("index.html").render(
+        root=".", cards_json=to_script_json(cards), **bases("."), **common)
+    if vendor:
+        index = WRAPPER_RE.sub("", index)
+    (OUT / "index.html").write_text(index, "utf-8")
+
+    review = env.get_template("review.html").render(
+        root=".", review_json=to_script_json(review_data(cat, all_cards)),
+        **bases("."), **common)
+    (OUT / "review.html").write_text(review, "utf-8")
+
+    # Card counts for the nav badge on every page (drops ids of removed cards).
+    (OUT / "static" / "js" / "recall-index.js").write_text(
+        "// Generated by scripts/build.py: recall cards per page, pages with practice.\n"
+        f"export const CARD_COUNTS = {json.dumps({a['id']: a['n_cards'] for a in cat['algorithms'] if a['n_cards']})};\n"
+        f"export const PRACTICE = {json.dumps([a['id'] for a in cat['algorithms'] if a['status']['practice']])};\n",
+        "utf-8")
+
     n_pages = sum(a["status"]["page"] for a in cat["algorithms"])
     print(f"built {len(cat['algorithms'])} algorithms "
-          f"({n_pages} detailed) -> {OUT}/")
+          f"({n_pages} detailed, {len(all_cards)} recall cards) -> {OUT}/")
 
 
 def serve(port: int, out: Path = OUT) -> None:

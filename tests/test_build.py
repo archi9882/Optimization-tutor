@@ -67,15 +67,18 @@ def test_math_with_angle_brackets_is_escaped() -> None:
 
 
 @pytest.fixture(scope="module")
-def site() -> Path:
-    build.build()
-    return build.OUT
+def site(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    out = tmp_path_factory.mktemp("site")
+    build.build(out)
+    return out
 
 
 def test_build_writes_every_page(site: Path) -> None:
     """One HTML file per catalog entry plus the index and Python manifest."""
     ids = [a["id"] for a in build.load_catalog()["algorithms"]]
     assert (site / "index.html").exists()
+    assert (site / "review.html").exists()
+    assert "CARD_COUNTS" in (site / "static" / "js" / "recall-index.js").read_text("utf-8")
     for i in ids:
         assert (site / "algorithms" / f"{i}.html").exists(), i
     files = json.loads((site / "py" / "manifest.json").read_text("utf-8"))
@@ -93,3 +96,53 @@ def test_inline_json_cannot_close_script_tag(site: Path) -> None:
                 blob = text.split(marker, 1)[1].split("</script>", 1)[0]
                 assert "</" not in blob
                 json.loads(blob)
+
+
+def test_extract_recall_marks_only_interview_section() -> None:
+    """Only <details> under 面試追問 become cards; ids are algo#qN."""
+    html = build.render_markdown(
+        "## 定義\n\n<details markdown=\"1\">\n<summary>推導</summary>\n\n略\n\n</details>\n\n"
+        "## 面試追問\n\n<details markdown=\"1\">\n<summary>Q1. 為何 $a<b$？</summary>\n\n因為 *好*。\n\n</details>\n\n"
+        "<details markdown=\"1\">\n<summary>Q2. 再一題</summary>\n\n答。\n\n</details>\n\n## 後記\n\n<details><summary>x</summary>y</details>\n")
+    out, cards = build.extract_recall("demo", html)
+    assert [c["id"] for c in cards] == ["demo#q1", "demo#q2"]
+    assert cards[0]["q"] == "Q1. 為何 $a<b$？"
+    assert "<em>好</em>" in cards[0]["a_html"]
+    assert out.count('class="recall"') == 2
+    assert out.count("<details") == 4
+
+
+def _review_blob(site: Path) -> dict:
+    text = (site / "review.html").read_text("utf-8")
+    blob = text.split('id="review-data">', 1)[1].split("</script>", 1)[0]
+    assert "</" not in blob
+    return json.loads(blob)
+
+
+def test_every_detailed_page_yields_recall_cards(site: Path) -> None:
+    """Each detailed page has >= 1 card, ids are unique and match the page."""
+    data = _review_blob(site)
+    ids = [c["id"] for c in data["cards"]]
+    assert len(ids) == len(set(ids))
+    cat = build.load_catalog()
+    for a in cat["algorithms"]:
+        if not a["status"]["page"]:
+            continue
+        mine = [c for c in data["cards"] if c["algo"] == a["id"]]
+        assert mine, a["id"]
+        assert data["algos"][a["id"]]["cards"] == len(mine)
+        page = (site / "algorithms" / f"{a['id']}.html").read_text("utf-8")
+        for c in mine:
+            assert c["id"] == f"{a['id']}#q{c['n']}"
+            assert c["q"].strip() and c["a_html"].strip(), c["id"]
+            assert f'data-card="{c["id"]}"' in page
+
+
+def test_home_cards_carry_recall_counts(site: Path) -> None:
+    """The home page data has the card count used by the mastery ring."""
+    text = (site / "index.html").read_text("utf-8")
+    blob = text.split('id="cards-data">', 1)[1].split("</script>", 1)[0]
+    assert "</" not in blob
+    cards = {c["id"]: c for c in json.loads(blob)}
+    assert cards["gd"]["cards"] >= 1
+    assert all(c["cards"] == 0 for c in cards.values() if not c["status"]["page"])

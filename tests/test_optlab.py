@@ -331,3 +331,147 @@ def test_trust_region_records_radii_and_rejects_bad_steps() -> None:
     out = run_named("trust_region", "rosenbrock", n_iter=200)
     assert out["status"] == "converged"
     assert len(out["radius"]) == out["n_iter"] and min(out["radius"]) > 0
+
+
+# ---------- derivative-free family ----------
+
+@pytest.mark.parametrize("algo", ["nelder_mead", "powell", "pattern_search"])
+@pytest.mark.parametrize("pid,params", PROBLEMS)
+def test_derivative_free_methods_reach_a_minimum(algo: str, pid: str, params: dict) -> None:
+    """Every method stops on its own rule (or by gradient) at a listed minimum,
+    except compass search on Rosenbrock, which needs far more than 2000 polls."""
+    out = run_named(algo, pid, params, n_iter=2000)
+    if (algo, pid) == ("pattern_search", "rosenbrock"):
+        assert out["status"] == "max_iter" and out["fs"][-1] > 1e-3
+        return
+    assert out["status"] in ("stopped", "converged")
+    assert out["fs"][-1] < 1e-12
+    prob = make_problem(pid, **params)
+    assert min(math.dist(out["xs"][-1], m) for m in prob.minima) < 1e-5
+
+
+@pytest.mark.parametrize("algo", ["nelder_mead", "powell", "pattern_search"])
+def test_derivative_free_methods_never_increase_f_and_count_evals(algo: str) -> None:
+    """The reported best value is monotone and evaluations are counted exactly."""
+    import dataclasses
+    prob = make_problem("rosenbrock")
+    calls = [0]
+
+    def f(x):
+        calls[0] += 1
+        return prob.f(x)
+
+    counted = dataclasses.replace(prob, f=f)
+    opt = OPTIMIZERS[algo]
+    seen = [0]
+
+    def step(x, problem, state, p):
+        before = calls[0]
+        out = opt.step(x, problem, state, p)
+        seen[0] += calls[0] - before          # only the method's own calls
+        return out
+
+    out = run(step, counted, prob.x0, opt.defaults(), n_iter=300)
+    assert all(b <= a for a, b in zip(out["fs"], out["fs"][1:]))
+    assert out["evals"] == seen[0]
+    assert len(out["poly"]) == len(out["xs"])
+
+
+def test_nelder_mead_poly_is_the_current_simplex() -> None:
+    """Each recorded triangle contains the iterate as its best vertex."""
+    prob = make_problem("himmelblau")
+    out = run_named("nelder_mead", "himmelblau", n_iter=50)
+    assert out["poly"][0] == [[-0.5, -0.5], [0.0, -0.5], [-0.5, 0.0]]
+    for x, tri in zip(out["xs"][1:], out["poly"][1:]):
+        assert len(tri) == 3 and x in tri
+        assert prob.f(x) == min(prob.f(v) for v in tri)
+
+
+def test_nelder_mead_is_insensitive_to_rotating_the_bowl() -> None:
+    """Unlike compass search, NM barely cares how the valley is rotated."""
+    def evals(algo: str, theta: float) -> int:
+        out = run_named(algo, "quadratic", {"kappa": 100, "theta_deg": theta},
+                        n_iter=5000)
+        return out["evals"]
+    assert evals("nelder_mead", 30) < 2 * evals("nelder_mead", 0)
+    assert evals("pattern_search", 30) > 5 * evals("nelder_mead", 30)
+
+
+def test_nelder_mead_stalls_on_mckinnon_function() -> None:
+    """McKinnon's example: NM collapses onto (0, 0), where df/dy = 1."""
+    from optlab.demos.nelder_mead import diameter, nelder_mead_step
+
+    def f(p):
+        x, y = p
+        return (360 * x * x if x <= 0 else 6 * x * x) + y + y * y
+
+    simplex = [(0.0, 0.0), (1.0, 1.0),
+               ((1 + math.sqrt(33)) / 8, (1 - math.sqrt(33)) / 8)]
+    fvals = [f(v) for v in simplex]
+    for _ in range(200):
+        simplex, fvals = nelder_mead_step(simplex, fvals, f)
+    best = simplex[min(range(3), key=fvals.__getitem__)]
+    assert diameter(simplex) < 1e-12
+    assert math.hypot(*best) < 1e-12           # not the minimiser (0, -0.5)
+    assert min(fvals) > f((0.0, -0.5)) + 0.2
+    # Same code, another starting triangle: finds the true minimiser.
+    simplex = [(0.5, 0.5), (1.0, 0.5), (0.5, 1.0)]
+    fvals = [f(v) for v in simplex]
+    for _ in range(200):
+        simplex, fvals = nelder_mead_step(simplex, fvals, f)
+    best = simplex[min(range(3), key=fvals.__getitem__)]
+    assert math.dist(best, (0.0, -0.5)) < 1e-6
+
+
+def test_compass_step_halves_on_failure_and_keeps_it_on_success() -> None:
+    """Step stays after a successful poll; halves (and x stays) on failure."""
+    from optlab.demos.pattern_search import compass_step
+    prob = make_problem("quadratic", kappa=10, theta_deg=30)
+    out = run_named("pattern_search", "quadratic", {"kappa": 10, "theta_deg": 30},
+                    n_iter=60)
+    x, fx, h = tuple(out["xs"][0]), prob.f(tuple(out["xs"][0])), 0.5
+    for _ in range(60):
+        x_new, f_new, h_new = compass_step(x, fx, h, prob.f)
+        if x_new == x:
+            assert h_new == h / 2 and f_new == fx
+        else:
+            assert h_new == h and f_new < fx
+            assert sorted(abs(a - b) for a, b in zip(x, x_new)) == [0.0, h]
+        x, fx, h = x_new, f_new, h_new
+
+
+def test_powell_finishes_a_2d_quadratic_in_two_sweeps() -> None:
+    """Conjugate directions: after two sweeps f is at rounding level, from any start."""
+    rng = random.Random(3)
+    for theta in (0, 30, 60):
+        prob = make_problem("quadratic", kappa=50, theta_deg=theta)
+        for _ in range(5):
+            x0 = (rng.uniform(-4, 4), rng.uniform(-2, 2))
+            out = run(OPTIMIZERS["powell"].step, prob, x0, {}, n_iter=10)
+            assert out["fs"][min(2, out["n_iter"])] < 1e-12
+
+
+def test_powell_drops_the_direction_of_largest_decrease() -> None:
+    """On 4x^2 + y^2 the x-search gains most, so e1 is replaced."""
+    from optlab.demos.powell import powell_step
+    _, _, dirs = powell_step((1.0, 1.0), 5.0, [(1.0, 0.0), (0.0, 1.0)],
+                             lambda p: 4 * p[0] ** 2 + p[1] ** 2)
+    assert dirs[0] == (0.0, 1.0)
+    assert dirs[1] == pytest.approx((-1 / math.sqrt(2), -1 / math.sqrt(2)), abs=1e-7)
+
+
+def test_failed_poll_bounds_the_gradient() -> None:
+    """With L-smooth f and the 2n compass directions, a poll where every point
+    fails implies ||grad f(x)|| <= sqrt(n) * L * h / 2 (page derivation)."""
+    from optlab.demos.pattern_search import compass_step
+    kappa = 10.0                                      # L = kappa for this bowl
+    prob = make_problem("quadratic", kappa=kappa, theta_deg=30)
+    x, h = prob.x0, 0.5
+    fx, failures = prob.f(x), 0
+    for _ in range(300):
+        x_new, fx, h_new = compass_step(x, fx, h, prob.f)
+        if x_new == x:
+            failures += 1
+            assert math.hypot(*prob.grad(x)) <= math.sqrt(2) * kappa * h / 2
+        x, h = x_new, h_new
+    assert failures > 10

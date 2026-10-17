@@ -390,6 +390,24 @@ export class ContourPlot {
       const [sx0, sy0] = this.toPx(...s.xs[0]);
       c.fillStyle = surface; c.beginPath(); c.arc(sx0, sy0, 4, 0, 7); c.fill();
       c.lineWidth = 2; c.stroke();
+      if (!s.dash && s.poly) {
+        // Per-iterate geometry: NM simplex / poll stencil (filled) or a fan of directions (open).
+        const open = s.polyKind === "open";
+        const shape = s.poly[Math.min(n, s.poly.length) - 1];
+        if (shape && shape.length) {
+          c.save();
+          c.beginPath();
+          shape.forEach(([x, y], i) => { const [px, py] = this.toPx(x, y); i ? c.lineTo(px, py) : c.moveTo(px, py); });
+          if (!open) { c.closePath(); c.globalAlpha = 0.25; c.fillStyle = s.color; c.fill(); }
+          c.globalAlpha = 0.9; c.lineWidth = 1.5; c.stroke();
+          c.fillStyle = s.color;
+          (open ? [shape[0], shape[shape.length - 1]] : shape).forEach(([x, y]) => {
+            const [px, py] = this.toPx(x, y);
+            c.beginPath(); c.arc(px, py, 2.5, 0, 7); c.fill();
+          });
+          c.restore();
+        }
+      }
       if (!s.dash && s.radius && n - 1 < s.radius.length) {
         // Trust region used for the next step, drawn around the current point.
         const [cx, cy] = this.toPx(...s.xs[n - 1]);

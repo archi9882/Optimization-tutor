@@ -6,10 +6,13 @@
 
 import { ContourPlot, seriesColor } from "./plots.js";
 import { call, onState, warmUp } from "./py.js";
+import { mastery, recordPractice } from "./progress.js";
 
 const ex = JSON.parse(document.getElementById("practice-data").textContent);
 const mount = document.getElementById("practice");
 const KEY = `ot-practice-${ex.id}`;
+// Progress is keyed by the page (algorithm) id, which can differ from ex.id.
+const algoId = document.querySelector("article.algo[data-algo]")?.dataset.algo || ex.id;
 
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
 const saved = load();
@@ -135,6 +138,7 @@ const ansBtn = h("button", { class: "btn", type: "button" }, "看答案");
 const resetBtn = h("button", { class: "btn", type: "button" }, "清除");
 const pyStatus = h("span", { class: "py-status" });
 const verdict = h("div", { class: "verdict" });
+const progressNote = h("p", { class: "hint-text progress-note", "aria-live": "polite" });
 const results = h("ul", { class: "results" });
 const plotBox = h("div", {}, h("div", { class: "plot-title" }, "你的軌跡（實線）與參考解（虛線）"));
 
@@ -146,7 +150,7 @@ const fold2 = h("details", { class: "fold" },
       h("div", { class: "practice-main" }, clozeBox, scratchBox,
         h("div", { class: "widget-row", style: "margin-top:10px" }, runBtn, hintBtn, ansBtn, resetBtn, pyStatus),
         hintList),
-      h("div", {}, plotBox, verdict, results)),
+      h("div", {}, plotBox, verdict, progressNote, results)),
     h("p", { class: "hint-text" }, "評分分三層：個別函式的測資、完整執行的最終結果、每一步是否和參考解相同。")));
 
 mount.append(h("div", { class: "folds" }, fold1, fold2));
@@ -171,6 +175,7 @@ hintBtn.addEventListener("click", () => {
 });
 
 confirmTwice(ansBtn, "看答案", "再按一次顯示答案", () => {
+  saved.revealed = { ...(saved.revealed || {}), [mode]: true };
   if (mode === "cloze") {
     const order = parts.filter((p) => typeof p !== "string");
     inputs.forEach((input, i) => {
@@ -185,6 +190,7 @@ confirmTwice(ansBtn, "看答案", "再按一次顯示答案", () => {
   }
 });
 confirmTwice(resetBtn, "清除", "再按一次清除", () => {
+  if (saved.revealed) saved.revealed[mode] = false;
   if (mode === "cloze") {
     inputs.forEach((input, i) => { input.value = ""; saved.blanks[i] = ""; input.classList.remove("revealed"); });
   } else {
@@ -203,8 +209,19 @@ function show(res) {
   verdict.className = `verdict ${res.passed ? "pass" : "fail"}`;
   const series = [];
   if (res.ref_trace) series.push({ ...res.ref_trace, label: "參考解", color: getComputedStyle(document.documentElement).getPropertyValue("--ink-2").trim(), dash: true });
-  if (res.user_trace) series.push({ ...res.user_trace, label: "你的程式", color: seriesColor(0), dots: !!ex.region });
+  if (res.user_trace) series.push({ ...res.user_trace, polyKind: res.user_trace.poly_kind, label: "你的程式", color: seriesColor(0), dots: !!ex.region });
   if (plot) plot.setSeries(series);
+}
+
+// A pass right after 「看答案」 is not counted: mastery rewards recall, not copying.
+function record(passed) {
+  if (passed && saved.revealed?.[mode]) {
+    progressNote.textContent = "看過答案後的通過不計入熟練度；按「清除」重做一次就會記錄。";
+    return;
+  }
+  recordPractice(algoId, passed);
+  const cards = document.querySelectorAll(".recall-card").length;
+  progressNote.textContent = passed ? `已記錄這次通過。目前熟練度：${mastery(algoId, cards).label}。` : "";
 }
 
 function clozeSource() {
@@ -224,7 +241,9 @@ runBtn.addEventListener("click", async () => {
   runBtn.textContent = "執行中…";
   try {
     const source = mode === "cloze" ? clozeSource() : editor.value;
-    show(await call("grade", { exercise: ex.id, source }, 8000));
+    const res = await call("grade", { exercise: ex.id, source }, 8000);
+    show(res);
+    record(res.passed);
   } catch (err) {
     show({ passed: false, results: [{ layer: 0, name: "執行", passed: false, message: err.message }] });
   } finally {
@@ -235,3 +254,5 @@ runBtn.addEventListener("click", async () => {
 
 // Python is only needed once someone opens the practice fold.
 fold2.addEventListener("toggle", () => { if (fold2.open) warmUp().catch(() => {}); });
+// The review page links here with #practice: open the exercise directly.
+if (location.hash === "#practice") fold2.open = true;

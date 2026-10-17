@@ -126,14 +126,16 @@ function renderRows() {
 function describe(t) {
   const gap = t.fs[t.fs.length - 1] - (st.grid.fstar ?? 0);
   if (t.status === "diverged") return `第 ${t.n_iter + 1} 步發散`;
-  if (t.status === "converged") return `${t.n_iter} 步收斂 · f−f* = ${fmt(gap)}`;
-  return `${t.n_iter} 步 · f−f* = ${fmt(gap)}`;
+  const ev = t.evals !== undefined ? ` · ${t.evals} 次 f 計算` : "";
+  if (t.status === "converged") return `${t.n_iter} 步收斂 · f−f* = ${fmt(gap)}${ev}`;
+  if (t.status === "stopped") return `${t.n_iter} 步停止 · f−f* = ${fmt(gap)}${ev}`;
+  return `${t.n_iter} 步 · f−f* = ${fmt(gap)}${ev}`;
 }
 
 function visibleSeries() {
   return data.algos.map((id, i) => ({ id, i, t: st.traces.find((t) => t.algo === id) }))
     .filter((s) => s.t && st.enabled.has(s.id))
-    .map((s) => ({ xs: s.t.xs, fs: s.t.fs, status: s.t.status, radius: s.t.radius, label: data.optimizers[s.id].name, color: seriesColor(s.i) }));
+    .map((s) => ({ xs: s.t.xs, fs: s.t.fs, status: s.t.status, radius: s.t.radius, poly: s.t.poly, polyKind: s.t.poly_kind, label: data.optimizers[s.id].name, color: seriesColor(s.i) }));
 }
 
 function maxLen() { return Math.max(1, ...visibleSeries().map((s) => s.xs.length)); }

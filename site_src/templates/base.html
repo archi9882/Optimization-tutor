@@ -24,6 +24,7 @@
   </a>
   <nav>
     <a href="{{ root }}/index.html">目錄</a>
+    <a class="nav-review" href="{{ root }}/review.html">複習<span class="nav-badge" hidden></span></a>
     <button class="theme-toggle" type="button" aria-label="切換深淺色"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg></button>
   </nav>
 </header>
@@ -36,6 +37,7 @@
 <script defer src="{{ katex_base }}katex.min.js"></script>
 <script defer src="{{ katex_base }}contrib/auto-render.min.js"></script>
 <script type="module" src="{{ root }}/static/js/common.js"></script>
+<script type="module" src="{{ root }}/static/js/game.js"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
