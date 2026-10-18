@@ -728,11 +728,17 @@ export class ConvergencePlot {
       const done = k >= s.fs.length ? (s.status === "diverged" ? "（已發散）" : "（已停止）") : "";
       return `${s.label}: ${fmt(f - this.fstar)}${done}`;
     });
-    this.tip.textContent = `k = ${k}   ` + lines.join("   ");
-    this.tip.style.left = `${Math.min(Math.max(e.offsetX, 120), this.w - 120)}px`;
-    this.tip.style.top = `${this.pad.t + 10}px`;
+    // One series per line, wrapped to the plot width, then clamped inside it
+    // (several series used to overflow the plot on phones).
+    this.tip.textContent = `k = ${k}\n` + lines.join("\n");
+    this.tip.style.whiteSpace = "pre-line";
+    this.tip.style.maxWidth = `${Math.max(120, this.w - 8)}px`;
     this.tip.style.transform = "translate(-50%, 0)";
     this.tip.hidden = false;
+    const half = this.tip.offsetWidth / 2;
+    const left = half * 2 >= this.w ? this.w / 2 : Math.min(Math.max(e.offsetX, half + 4), this.w - half - 4);
+    this.tip.style.left = `${left}px`;
+    this.tip.style.top = `${this.pad.t + 10}px`;
     this.draw();
   }
 }

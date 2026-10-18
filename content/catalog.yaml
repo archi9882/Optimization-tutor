@@ -444,7 +444,7 @@ algorithms:
     info: structure
     tags: [deterministic, exact, polynomial]
     domains: [logistics, agriculture]
-    summary: 在多項式時間內解出最優指派問題，例如把機具分派到田區。
+    summary: 在多項式時間內解出指派問題的最優解，例如把機具分派到田區。
   - id: two-opt
     name: 2-opt 局部搜尋
     en: 2-opt Local Search
