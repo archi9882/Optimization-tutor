@@ -52,6 +52,8 @@ def adapter(fn):
     An infeasible start (or an equality constraint) stops at once."""
     def step(x, problem, state, p):
         cons = problem.constraints
+        if not cons:
+            raise ValueError("障礙法需要至少一個不等式限制")
         if any(c.kind == "eq" for c in cons):
             return x, {"stop": True, "message": "障礙法只處理不等式限制"}
         if not state and any(c.g(x) >= 0 for c in cons):
@@ -59,7 +61,10 @@ def adapter(fn):
                        "message": "起點不在可行域內部：log(−g) 沒有定義，障礙法無法開始"}
         mu = state.get("mu", p["mu0"])
         n_in = state.get("n_in", 0) + 1
-        x_new, gnorm = fn(x, mu, problem.f, problem.grad, problem.hess, cons)
+        try:
+            x_new, gnorm = fn(x, mu, problem.f, problem.grad, problem.hess, cons)
+        except ZeroDivisionError:      # slack so small that g² underflows to 0
+            return x, {"stop": True, "message": "迭代點離邊界太近，g² 下溢為 0，停止"}
         x_new = as_vec(x_new)
         done = gnorm < INNER_TOL or n_in >= int(p["inner"])
         k = state.get("outer", 0)

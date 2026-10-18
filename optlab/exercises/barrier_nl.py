@@ -52,7 +52,7 @@ EXERCISE = Exercise(
     skeleton=SKELETON,
     hints=[
         "−log(−g) 在 g → 0⁻ 時趨近 +∞：它是一道牆，μ 越小牆越薄。",
-        "d/dx[−log(−g(x))] = −∇g / g。因為 g < 0，這一項指向遠離邊界的方向。",
+        "d/dx[−log(−g(x))] = −∇g / g = ∇g / |g|（因為 g < 0）：這個梯度指向邊界，越靠近越大；下降方法沿負梯度走，所以障礙項把點推離邊界。",
         "二階導數有兩部分：∇g∇gᵀ/g²（靠近邊界時很大）和 −∇²g/g（限制本身彎曲時才有，例如圓盤 ∇²g = 2I）。",
     ],
     solution=demos.source("barrier_nl"),

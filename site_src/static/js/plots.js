@@ -297,26 +297,35 @@ export class ContourPlot {
   drawConstraints(c) {
     const g = this.grid, cons = g.constraints, nx = g.x.length, ny = g.y.length;
     const ineq = cons.filter((k) => k.kind !== "eq");
+    // Bilinear value of a sampled constraint at fractional grid indices.
+    const at = (z, fi, fj) => {
+      fi = Math.min(nx - 1.000001, Math.max(0, fi)); fj = Math.min(ny - 1.000001, Math.max(0, fj));
+      const i = Math.floor(fi), j = Math.floor(fj), u = fi - i, v = fj - j;
+      return (1 - u) * (1 - v) * z[j][i] + u * (1 - v) * z[j][i + 1] + u * v * z[j + 1][i + 1] + (1 - u) * v * z[j + 1][i];
+    };
+    const rgbOf = (ctx, name) => {
+      ctx.fillStyle = css(name);
+      const hex = ctx.fillStyle; // normalised "#rrggbb"
+      return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    };
     if (ineq.length) {
-      const W = this.canvas.width, H = this.canvas.height;
+      // Infeasible area: a wash that fades the contours plus diagonal hatching.
+      const W = this.canvas.width, H = this.canvas.height, dpr = W / this.w;
       const off = document.createElement("canvas");
       off.width = W; off.height = H;
       const octx = off.getContext("2d");
-      octx.fillStyle = css("--surface-2"); // grey wash that also fades the contours
-      const hex = octx.fillStyle; // normalised "#rrggbb"
-      const rgb = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+      const wash = rgbOf(octx, "--surface"), hatch = rgbOf(octx, "--muted");
+      const period = Math.round(9 * dpr), thick = Math.max(1, Math.round(1.2 * dpr));
       const img = octx.createImageData(W, H);
       for (let py = 0; py < H; py++) {
-        const fj = Math.min(ny - 1.000001, Math.max(0, (1 - py / H) * (ny - 1)));
-        const j = Math.floor(fj), v = fj - j;
+        const fj = (1 - py / H) * (ny - 1);
         for (let px = 0; px < W; px++) {
-          const fi = Math.min(nx - 1.000001, Math.max(0, (px / W) * (nx - 1)));
-          const i = Math.floor(fi), u = fi - i;
-          const bad = ineq.some(({ z }) => (1 - u) * (1 - v) * z[j][i] + u * (1 - v) * z[j][i + 1]
-            + u * v * z[j + 1][i + 1] + (1 - u) * v * z[j + 1][i] > 0);
-          if (!bad) continue;
-          const o = 4 * (py * W + px);
-          img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 215;
+          const fi = (px / W) * (nx - 1);
+          if (!ineq.some(({ z }) => at(z, fi, fj) > 0)) continue;
+          const o = 4 * (py * W + px), line = (px + py) % period < thick;
+          const col = line ? hatch : wash;
+          img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2];
+          img.data[o + 3] = line ? 170 : 200;
         }
       }
       octx.putImageData(img, 0, 0);
@@ -328,6 +337,17 @@ export class ContourPlot {
     const sx = this.w / (nx - 1), sy = this.h / (ny - 1);
     c.save();
     c.font = `12px ${css("--font")}`;
+    const box = (text, x, y, color) => {
+      // Text centred at (x, y) on a translucent background, kept inside the canvas.
+      const tw = c.measureText(text).width;
+      x = Math.max(4 + tw / 2, Math.min(this.w - 4 - tw / 2, x));
+      y = Math.max(10, Math.min(this.h - 10, y));
+      c.fillStyle = css("--surface"); c.globalAlpha = 0.9;
+      c.fillRect(x - tw / 2 - 3, y - 8, tw + 6, 16);
+      c.globalAlpha = 1; c.fillStyle = color;
+      c.textAlign = "center"; c.textBaseline = "middle";
+      c.fillText(text, x, y);
+    };
     cons.forEach((k, n) => {
       const segs = isoSegments(k.z, 0);
       c.strokeStyle = k.kind === "eq" ? css("--accent") : css("--ink-2");
@@ -336,24 +356,29 @@ export class ContourPlot {
       for (const [a, b, p, q] of segs) { c.moveTo(a * sx, this.h - b * sy); c.lineTo(p * sx, this.h - q * sy); }
       c.stroke();
       if (!segs.length || !k.label) return;
-      // Label at a point along the curve, staggered between constraints.
-      const [a, b] = segs[Math.floor(segs.length * (0.3 + 0.15 * (n % 3)))];
+      // Label the part of the curve that really bounds the feasible set (all
+      // other inequalities hold there), on the infeasible side of the curve.
+      const others = ineq.filter((o) => o !== k);
+      const mids = segs.map(([a, b, p, q]) => [(a + p) / 2, (b + q) / 2])
+        .filter(([fi, fj]) => others.every((o) => at(o.z, fi, fj) <= 1e-9));
+      const pool = mids.length ? mids : segs.map(([a, b, p, q]) => [(a + p) / 2, (b + q) / 2]);
+      const [fi, fj] = pool[Math.floor(pool.length * (0.35 + 0.1 * (n % 3)))];
+      let gx = (at(k.z, fi + 0.5, fj) - at(k.z, fi - 0.5, fj)) / sx;   // outward normal in px
+      let gy = -(at(k.z, fi, fj + 0.5) - at(k.z, fi, fj - 0.5)) / sy;
+      const gn = Math.hypot(gx, gy) || 1;
+      gx /= gn; gy /= gn;
       const tw = c.measureText(k.label).width;
-      const lx = Math.max(4, Math.min(this.w - tw - 8, a * sx + 6));
-      const ly = Math.max(14, Math.min(this.h - 6, this.h - b * sy - 4));
-      c.fillStyle = css("--surface"); c.globalAlpha = 0.85;
-      c.fillRect(lx - 2, ly - 12, tw + 4, 15);
-      c.globalAlpha = 1; c.fillStyle = css("--ink-2");
-      c.textAlign = "left"; c.textBaseline = "alphabetic";
-      c.fillText(k.label, lx, ly);
+      const d = 10 + Math.abs(gx) * tw / 2;
+      box(k.label, fi * sx + gx * d, this.h - fj * sy + gy * d, css("--ink-2"));
     });
     if (g.unconstrained) {
       // Where f alone would go: the constraint is what stops it.
       const [px, py] = this.toPx(...g.unconstrained);
       c.strokeStyle = css("--muted"); c.lineWidth = 1.5;
       c.beginPath(); c.arc(px, py, 5, 0, 7); c.stroke();
-      c.fillStyle = css("--muted"); c.textAlign = "left"; c.textBaseline = "middle";
-      c.fillText("無限制最小值", Math.min(px + 8, this.w - 80), py);
+      const text = "無限制最小值", tw = c.measureText(text).width;
+      const right = px + 12 + tw + 4 <= this.w;
+      box(text, right ? px + 12 + tw / 2 : px - 12 - tw / 2, py, css("--muted"));
     }
     c.restore();
   }

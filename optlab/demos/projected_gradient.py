@@ -33,7 +33,7 @@ def adapter(fn):
         x_new = as_vec(fn(x, problem.grad(x), p["lr"], problem.project))
         move = math.dist(x, x_new)
         # Gradient mapping G = (x − x_new)/η: zero exactly at a KKT point.
-        info = {"‖x_{k+1} − x_k‖ / η": move / p["lr"]}
+        info = {"‖xₖ₊₁ − xₖ‖ / η": move / p["lr"]}
         return x_new, {"info": info, "stop": move < STOP_MOVE}
     return step
 

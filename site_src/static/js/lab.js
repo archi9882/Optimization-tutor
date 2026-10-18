@@ -140,10 +140,10 @@ function renderRows() {
 
 function describe(t) {
   if (constrained()) {
-    if (t.message) return t.message;
     const x = t.xs[t.xs.length - 1], xs = st.grid.minima[0];
     const d = `‖x−x*‖ = ${fmt(Math.hypot(x[0] - xs[0], x[1] - xs[1]))} · 違反量 ${fmt(t.violation)}`;
     if (t.status === "diverged") return `第 ${t.n_iter + 1} 步發散`;
+    if (t.message) return `${t.n_iter} 步停止：${t.message} · ${d}`;
     return `${t.n_iter} 步${t.status === "stopped" ? "停止" : ""} · ${d}`;
   }
   const gap = t.fs[t.fs.length - 1] - (st.grid.fstar ?? 0);
@@ -168,7 +168,12 @@ function redraw() {
   contour.setSeries(series);
   if (constrained()) {
     const xs = st.grid.minima[0];
-    conv.setSeries(series.map((s) => ({ ...s, fs: s.xs.map(([a, b]) => Math.hypot(a - xs[0], b - xs[1])) })), 0, st.spec.n_iter);
+    const dist = series.map((s) => s.xs.map(([a, b]) => Math.hypot(a - xs[0], b - xs[1])));
+    // An exact hit (distance 0) would sit at 1e-16 and stretch the log axis:
+    // clamp to a floor one decade below the smallest nonzero distance (at least 1e-12).
+    const nonzero = dist.flat().filter((v) => v > 0);
+    const floor = Math.max(1e-12, (nonzero.length ? Math.min(...nonzero) : 1) / 10);
+    conv.setSeries(series.map((s, i) => ({ ...s, fs: dist[i].map((v) => Math.max(v, floor)) })), 0, st.spec.n_iter);
   } else conv.setSeries(series, st.grid.fstar ?? 0, st.spec.n_iter);
   for (const t of st.traces) if (resultEls[t.algo]) {
     resultEls[t.algo].textContent = describe(t);

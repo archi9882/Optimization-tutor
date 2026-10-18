@@ -66,10 +66,13 @@ def adapter(fn):
         k = state.get("outer", 0) + (1 if updated else 0)
         info = {"外圈": k if updated else k + 1, "λ": lam_new, "內圈步": n_in, "‖∇L_A‖": gnorm}
         change = max([abs(a - b) for a, b in zip(lam_new, lam)] + [0.0])
-        return x_new, {"lam": lam_new, "n_in": 0 if updated else n_in, "outer": k,
-                       "info": info, "outer_end": updated,
-                       "stop": updated and ((gnorm < INNER_TOL and change < LAM_TOL)
-                                            or k >= MAX_OUTER)}
+        converged = updated and gnorm < INNER_TOL and change < LAM_TOL
+        capped = updated and not converged and k >= MAX_OUTER
+        state = {"lam": lam_new, "n_in": 0 if updated else n_in, "outer": k,
+                 "info": info, "outer_end": updated, "stop": converged or capped}
+        if capped:
+            state["message"] = f"達到外圈上限 {MAX_OUTER} 次，乘數尚未收斂"
+        return x_new, state
     return step
 
 

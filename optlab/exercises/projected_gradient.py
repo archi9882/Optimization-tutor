@@ -37,13 +37,14 @@ def projected_gradient_step(x, grad, lr, project):
 '''
 
 _SQUARE = [(0.0, 0.0), (2.0, 0.0), (2.0, 1.0), (0.0, 1.0)]
+_TRI = [(0.0, 0.0), (3.0, 0.0), (0.0, 3.0)]
 
 
 def _wire(ns, prob):
     """Use the learner's projection helpers (disk or polygon) on this problem."""
     if prob.id == "fert_disk":
         return with_helpers(ns, prob, project=lambda n: lambda y: n["project_disk"](y, (1.0, 1.0), 1.0))
-    verts = [(0.0, 0.0), (2.0, 0.0), (2.0, 1.0), (0.0, 1.0)]
+    verts = _TRI if prob.id == "fert_budget" else _SQUARE
     return with_helpers(ns, prob, project=lambda n: lambda y: n["project_polygon"](y, verts))
 
 
@@ -54,7 +55,7 @@ EXERCISE = Exercise(
     hints=[
         "投影梯度就是「先照常走梯度步，走出去了再拉回來」。拉回來的方式是找可行集合中最近的點。",
         "圓盤：點在圓外時，沿圓心到該點的方向縮回半徑 r：c + r·(y − c)/‖y − c‖。",
-        "線段 ab 上的最近點：t = (y − a)ᵀ(b − a)/‖b − a‖²，再把 t 截在 [0, 1]。",
+        "多邊形：頂點逆時針排列時，y 在每條邊 a→b 的左側（外積 (b − a) × (y − a) ≥ 0）就在內部，原地不動；否則對每條邊呼叫 project_segment，取離 y 最近的結果。",
     ],
     solution=demos.source("projected_gradient"),
     blanks=("r * d[0] / dist", "min(1.0, max(0.0, t))", "x[0] - lr * grad[0]", "project(y)"),
@@ -62,6 +63,15 @@ EXERCISE = Exercise(
         StepCase("圓盤投影：(3, 4) 拉回單位圓 → (0.6, 0.8)",
                  {"y": (3.0, 4.0), "center": (0.0, 0.0), "r": 1.0}, ((0.6, 0.8),),
                  func="project_disk"),
+        StepCase("圓盤投影：圓內的點 (0.2, 0.3) 不動",
+                 {"y": (0.2, 0.3), "center": (0.0, 0.0), "r": 1.0}, ((0.2, 0.3),),
+                 func="project_disk"),
+        StepCase("三角形投影：(3, 2) 落在斜邊 x₁ + x₂ = 3 外側 → 垂足 (2, 1)",
+                 {"y": (3.0, 2.0), "vertices": _TRI}, ((2.0, 1.0),), func="project_polygon"),
+        StepCase("三角形投影：內部的點 (0.5, 0.5) 不動",
+                 {"y": (0.5, 0.5), "vertices": _TRI}, ((0.5, 0.5),), func="project_polygon"),
+        StepCase("三角形投影：(4, −1) 在頂點外側 → 頂點 (3, 0)",
+                 {"y": (4.0, -1.0), "vertices": _TRI}, ((3.0, 0.0),), func="project_polygon"),
         StepCase("多邊形投影：(3, 0.5) → 右邊 x₁ = 2 上的 (2, 0.5)",
                  {"y": (3.0, 0.5), "vertices": _SQUARE}, ((2.0, 0.5),), func="project_polygon"),
         StepCase("多邊形投影：(3, 3) → 角落 (2, 1)",
@@ -77,6 +87,8 @@ EXERCISE = Exercise(
     check=make_check(DEMO, "projected_gradient_step", [
         {"problem": "fert_disk", "params": {"lr": 0.1}, "n_iter": 200, "dist": 1e-8,
          "viol": 1e-12, "path": True, "goal": "土壤養分圓盤：停在圓周上的 x*"},
+        {"problem": "fert_budget", "params": {"lr": 0.1}, "n_iter": 200, "dist": 1e-8,
+         "viol": 1e-12, "path": True, "goal": "施肥預算（三角形）：停在預算線上的 x*"},
         {"problem": "reservoir", "params": {"lr": 0.1}, "n_iter": 200, "dist": 1e-8,
          "viol": 1e-12, "path": True, "goal": "兩座水庫（箱型）：停在 x₂ = 1 這條邊上的 x*"}], wire=_wire),
     loop_note="上方動畫每一步呼叫一次 projected_gradient_step()，project 由問題提供"
