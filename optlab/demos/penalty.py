@@ -60,7 +60,7 @@ def adapter(fn):
         else:
             rho_next = rho
         return x_new, {"rho": rho_next, "n_in": n_in, "outer": k, "info": info,
-                       "outer_end": done, "stop": done and rho >= RHO_MAX}
+                       "outer_end": done, "stop": done and rho >= RHO_MAX * (1 - 1e-9)}
     return step
 
 

@@ -11,13 +11,16 @@ from ..grading import Exercise
 from .active_set import EXERCISE as ACTIVE_SET
 from .adagrad import EXERCISE as ADAGRAD
 from .adam import EXERCISE as ADAM
+from .augmented_lagrangian import EXERCISE as AUGMENTED_LAGRANGIAN
 from .barrier import EXERCISE as BARRIER
+from .barrier_nl import EXERCISE as BARRIER_NL
 from .bfgs import EXERCISE as BFGS
 from .branch_bound import EXERCISE as BRANCH_BOUND
 from .coordinate import EXERCISE as COORDINATE
 from .cutting_plane import EXERCISE as CUTTING_PLANE
 from .dual_simplex import EXERCISE as DUAL_SIMPLEX
 from .dynamic_programming import EXERCISE as DYNAMIC_PROGRAMMING
+from .frank_wolfe import EXERCISE as FRANK_WOLFE
 from .gauss_newton import EXERCISE as GAUSS_NEWTON
 from .gd import EXERCISE as GD
 from .greedy import EXERCISE as GREEDY
@@ -30,7 +33,9 @@ from .nelder_mead import EXERCISE as NELDER_MEAD
 from .nesterov import EXERCISE as NESTEROV
 from .newton import EXERCISE as NEWTON
 from .pattern_search import EXERCISE as PATTERN_SEARCH
+from .penalty import EXERCISE as PENALTY
 from .powell import EXERCISE as POWELL
+from .projected_gradient import EXERCISE as PROJECTED_GRADIENT
 from .rmsprop import EXERCISE as RMSPROP
 from .sgd import EXERCISE as SGD
 from .simplex import EXERCISE as SIMPLEX
@@ -43,7 +48,8 @@ EXERCISES: dict[str, Exercise] = {e.id: e for e in [
     NEWTON, GAUSS_NEWTON, LM, BFGS, LBFGS, NCG, TRUST_REGION,
     SIMPLEX, DUAL_SIMPLEX, BARRIER, ACTIVE_SET,
     BRANCH_BOUND, CUTTING_PLANE, DYNAMIC_PROGRAMMING, GREEDY, HUNGARIAN, TWO_OPT, TABU,
-    NELDER_MEAD, POWELL, PATTERN_SEARCH]}
+    NELDER_MEAD, POWELL, PATTERN_SEARCH,
+    PENALTY, BARRIER_NL, AUGMENTED_LAGRANGIAN, PROJECTED_GRADIENT, FRANK_WOLFE]}
 
 
 def grade_json(exercise_id: str, source: str) -> str:

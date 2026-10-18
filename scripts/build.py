@@ -129,9 +129,13 @@ def lab_data(cfg: dict) -> dict:
     grid = api.problem_grid(spec)
     spec["x0"] = grid["x0"]
     spec["runs"] = [{"algo": a, "params": params[a]} for a in algos]
-    return {"spec": spec, "enabled": cfg["algos"], "algos": algos,
-            "grid": grid, "traces": api.traces(spec),
-            "optimizers": {a: optimizer_meta()[a] for a in algos}}
+    out = {"spec": spec, "enabled": cfg["algos"], "algos": algos,
+           "grid": grid, "traces": api.traces(spec),
+           "optimizers": {a: optimizer_meta()[a] for a in algos}}
+    if "problems" in cfg:  # problem menu of this page (default: the unconstrained zoo)
+        assert cfg["problem"] in cfg["problems"], "lab.problem must be in lab.problems"
+        out["problems"] = cfg["problems"]
+    return out
 
 
 def lp_data(cfg: dict) -> dict:

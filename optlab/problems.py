@@ -173,13 +173,13 @@ def himmelblau() -> Problem:
 _ZERO_H = ((0.0, 0.0), (0.0, 0.0))
 
 
-def _linear(a: Vec, b: float, label: str, kind: str = "ineq") -> Constraint:
+def linear_constraint(a: Vec, b: float, label: str, kind: str = "ineq") -> Constraint:
     """a^T x - b <= 0 (or = 0)."""
     return Constraint(kind, lambda x: a[0] * x[0] + a[1] * x[1] - b,
                       lambda x: (float(a[0]), float(a[1])), lambda x: _ZERO_H, label)
 
 
-def _disk(c: Vec, r: float, label: str) -> Constraint:
+def disk_constraint(c: Vec, r: float, label: str) -> Constraint:
     """(x - c)^2 - r^2 <= 0."""
     return Constraint("ineq", lambda x: (x[0] - c[0]) ** 2 + (x[1] - c[1]) ** 2 - r * r,
                       lambda x: (2 * (x[0] - c[0]), 2 * (x[1] - c[1])),
@@ -193,39 +193,39 @@ def _single_multiplier(grad: Callable[[Vec], Vec], c: Constraint, x: Vec) -> flo
 
 
 def _fert_objective():
-    """Yield-loss proxy (x1 - 3)^2 + 2 (x2 - 2)^2 around the ideal dose (3, 2)."""
+    """Yield-loss proxy (x1 - 3)^2 + 3 (x2 - 2)^2 around the ideal dose (3, 2)."""
     def f(x: Vec) -> float:
-        return (x[0] - 3) ** 2 + 2 * (x[1] - 2) ** 2
+        return (x[0] - 3) ** 2 + 3 * (x[1] - 2) ** 2
 
     def grad(x: Vec) -> Vec:
-        return (2 * (x[0] - 3), 4 * (x[1] - 2))
+        return (2 * (x[0] - 3), 6 * (x[1] - 2))
 
     def hess(x: Vec) -> tuple[Vec, Vec]:
-        return ((2.0, 0.0), (0.0, 4.0))
+        return ((2.0, 0.0), (0.0, 6.0))
     return f, grad, hess
 
 
-_FERT_NOTE = ("x₁ = 氮肥、x₂ = 磷肥施用量（每公頃百公斤）。目標以二次函數近似產量損失："
-              "理想用量 (3, 2)，偏離越多損失越大（虛構的教學係數）。")
+_FERT_NOTE = ("x₁ = 氮肥、x₂ = 磷肥施用量（每公頃百公斤）。以二次函數近似產量損失 "
+              "f = (x₁−3)² + 3(x₂−2)²：理想用量 (3, 2)，偏離越多損失越大（虛構的教學係數）。")
 _FERT_BOUNDS = (-0.5, 4.0, -0.5, 3.5)
 
 
 def fert_budget() -> Problem:
     """Fertiliser N/P with a budget N + P <= 3 and N, P >= 0 (a triangle).
 
-    KKT by hand: 2(x1-3) + lam = 0, 4(x2-2) + lam = 0, x1 + x2 = 3
-    -> lam* = 8/3, x* = (5/3, 4/3), f* = 8/3.
+    KKT by hand: 2(x1-3) + lam = 0, 6(x2-2) + lam = 0, x1 + x2 = 3
+    -> lam* = 3, x* = (3/2, 3/2), f* = 3.
     """
     f, grad, hess = _fert_objective()
     verts = [(0.0, 0.0), (3.0, 0.0), (0.0, 3.0)]
     return Problem(
         id="fert_budget", name="施肥預算（三角形）", f=f, grad=grad, hess=hess,
-        bounds=_FERT_BOUNDS, x0=(0.5, 0.5), minima=[(5 / 3, 4 / 3)], fstar=8 / 3,
+        bounds=_FERT_BOUNDS, x0=(0.5, 0.5), minima=[(1.5, 1.5)], fstar=3.0,
         note=_FERT_NOTE + "限制：預算 x₁ + x₂ ≤ 3，且 x₁, x₂ ≥ 0。",
-        constraints=(_linear((1.0, 1.0), 3.0, "預算 x₁+x₂ ≤ 3"),
-                     _linear((-1.0, 0.0), 0.0, "x₁ ≥ 0"),
-                     _linear((0.0, -1.0), 0.0, "x₂ ≥ 0")),
-        multipliers=(8 / 3, 0.0, 0.0),
+        constraints=(linear_constraint((1.0, 1.0), 3.0, "預算 x₁+x₂ ≤ 3"),
+                     linear_constraint((-1.0, 0.0), 0.0, "x₁ ≥ 0"),
+                     linear_constraint((0.0, -1.0), 0.0, "x₂ ≥ 0")),
+        multipliers=(3.0, 0.0, 0.0),
         project=lambda y: project_polygon(y, verts),
         lmo=lambda g: lmo_polygon(g, verts),
         unconstrained=(3.0, 2.0))
@@ -236,35 +236,35 @@ def fert_equality() -> Problem:
     f, grad, hess = _fert_objective()
     return Problem(
         id="fert_eq", name="預算全部用完（等式）", f=f, grad=grad, hess=hess,
-        bounds=_FERT_BOUNDS, x0=(0.5, 0.5), minima=[(5 / 3, 4 / 3)], fstar=8 / 3,
+        bounds=_FERT_BOUNDS, x0=(0.5, 0.5), minima=[(1.5, 1.5)], fstar=3.0,
         note=_FERT_NOTE + "限制：x₁ + x₂ = 3（等式，可行集是一條線）。",
-        constraints=(_linear((1.0, 1.0), 3.0, "x₁+x₂ = 3", kind="eq"),),
-        multipliers=(8 / 3,), unconstrained=(3.0, 2.0))
+        constraints=(linear_constraint((1.0, 1.0), 3.0, "x₁+x₂ = 3", kind="eq"),),
+        multipliers=(3.0,), unconstrained=(3.0, 2.0))
 
 
 def fert_disk() -> Problem:
     """Same objective inside the disk (x1-1)^2 + (x2-1)^2 <= 1.
 
-    KKT: x1 = (3+lam)/(1+lam), x2 = (4+lam)/(2+lam) and the disk equation
-    (2/(1+lam))^2 + (2/(2+lam))^2 = 1, solved for lam by bisection.
+    KKT: x1 = (3+lam)/(1+lam), x2 = (6+lam)/(3+lam) and the disk equation
+    (2/(1+lam))^2 + (3/(3+lam))^2 = 1, solved for lam by bisection.
     """
     f, grad, hess = _fert_objective()
 
     def resid(lam: float) -> float:
-        return (2 / (1 + lam)) ** 2 + (2 / (2 + lam)) ** 2 - 1
+        return (2 / (1 + lam)) ** 2 + (3 / (3 + lam)) ** 2 - 1
 
     lo, hi = 0.0, 10.0
     for _ in range(200):
         mid = 0.5 * (lo + hi)
         lo, hi = (mid, hi) if resid(mid) > 0 else (lo, mid)
     lam = 0.5 * (lo + hi)
-    xs = ((3 + lam) / (1 + lam), (4 + lam) / (2 + lam))
+    xs = ((3 + lam) / (1 + lam), (6 + lam) / (3 + lam))
     return Problem(
         id="fert_disk", name="土壤養分圓盤", f=f, grad=grad, hess=hess,
         bounds=_FERT_BOUNDS, x0=(0.6, 0.8), minima=[xs], fstar=f(xs),
         note=_FERT_NOTE + "限制：(x₁−1)² + (x₂−1)² ≤ 1，"
              "假想的土壤檢測建議：與建議用量 (1, 1) 的距離不超過 1。",
-        constraints=(_disk((1.0, 1.0), 1.0, "土壤圓盤"),),
+        constraints=(disk_constraint((1.0, 1.0), 1.0, "土壤圓盤"),),
         multipliers=(lam,),
         project=lambda y: project_disk(y, (1.0, 1.0), 1.0),
         lmo=lambda g: lmo_disk(g, (1.0, 1.0), 1.0),
@@ -294,10 +294,10 @@ def reservoir() -> Problem:
         bounds=(-0.5, 2.5, -0.5, 2.0), x0=(0.2, 0.2), minima=[(5 / 3, 1.0)], fstar=1 / 3,
         note="x₁, x₂ = 兩座水庫的日放水量（虛構單位）。下游需水 3，"
              "同時希望兩庫放水接近：f = (x₁+x₂−3)² + ½(x₁−x₂)²。容量：0 ≤ x₁ ≤ 2、0 ≤ x₂ ≤ 1。",
-        constraints=(_linear((1.0, 0.0), 2.0, "x₁ ≤ 2"),
-                     _linear((0.0, 1.0), 1.0, "x₂ ≤ 1"),
-                     _linear((-1.0, 0.0), 0.0, "x₁ ≥ 0"),
-                     _linear((0.0, -1.0), 0.0, "x₂ ≥ 0")),
+        constraints=(linear_constraint((1.0, 0.0), 2.0, "x₁ ≤ 2"),
+                     linear_constraint((0.0, 1.0), 1.0, "x₂ ≤ 1"),
+                     linear_constraint((-1.0, 0.0), 0.0, "x₁ ≥ 0"),
+                     linear_constraint((0.0, -1.0), 0.0, "x₂ ≥ 0")),
         multipliers=(0.0, 4 / 3, 0.0, 0.0),
         project=lambda y: project_polygon(y, verts),
         lmo=lambda g: lmo_polygon(g, verts),
@@ -328,7 +328,7 @@ def rosenbrock_disk() -> Problem:
         a, b = (m, b) if slope(m) < 0 else (a, m)
     t = 0.5 * (a + b)
     xs = (math.cos(t), math.sin(t))
-    disk = _disk((0.0, 0.0), 1.0, "單位圓盤")
+    disk = disk_constraint((0.0, 0.0), 1.0, "單位圓盤")
     return Problem(
         id="rosen_disk", name="Rosenbrock + 圓盤（非凸）", f=base.f, grad=base.grad,
         hess=base.hess, bounds=(-1.5, 1.5, -1.5, 1.5), x0=(-0.6, 0.6),

@@ -14,7 +14,17 @@ const PROBLEMS = {
   ] },
   rosenbrock: { name: "Rosenbrock 香蕉谷", params: [] },
   himmelblau: { name: "Himmelblau 四谷", params: [] },
+  // Constrained problems (offered only on pages that list them in lab.problems).
+  fert_budget: { name: "施肥預算（三角形）", params: [] },
+  fert_eq: { name: "預算全部用完（等式）", params: [] },
+  fert_disk: { name: "土壤養分圓盤", params: [] },
+  reservoir: { name: "兩座水庫放水（箱型）", params: [] },
+  rosen_disk: { name: "Rosenbrock + 圓盤（非凸）", params: [] },
 };
+const PROBLEM_IDS = data.problems || ["quadratic", "rosenbrock", "himmelblau"];
+// With constraints the gradient of f is not zero at the optimum, so the
+// convergence plot shows the distance to the constrained optimum x* instead.
+const constrained = () => !!st.grid.constraints;
 
 const st = {
   spec: structuredClone(data.spec),
@@ -61,7 +71,7 @@ function slider({ label, lo, hi, log, value, unit = "", onInput }) {
 // ---------- layout ----------
 const pyStatus = h("span", { class: "py-status" });
 const problemSel = h("select", { "aria-label": "測試問題" },
-  ...Object.entries(PROBLEMS).map(([id, p]) => h("option", { value: id }, p.name)));
+  ...PROBLEM_IDS.map((id) => h("option", { value: id }, PROBLEMS[id].name)));
 problemSel.value = st.spec.problem;
 const problemParams = h("span", { class: "widget-row" });
 const iterSlider = slider({ label: "迭代數", lo: 20, hi: 500, log: false, value: st.spec.n_iter,
@@ -76,10 +86,15 @@ const speedSel = h("select", { "aria-label": "播放速度" },
   h("option", { value: 10 }, "慢"), h("option", { value: 30, selected: "" }, "中"), h("option", { value: 90 }, "快"));
 speedSel.addEventListener("change", () => { st.speed = Number(speedSel.value); });
 const frameOut = h("span", { class: "status-line" });
+const problemNote = h("p", { class: "hint-text" });
+const stepNote = h("p", { class: "step-note", "aria-live": "polite", style: "white-space: pre-line" });
+const convTitle = convBox.querySelector(".plot-title");
 
 mount.append(h("div", { class: "widget lab" },
   h("div", { class: "widget-row" }, h("label", { class: "ctl" }, "問題 ", problemSel), problemParams, iterSlider, pyStatus),
+  problemNote,
   h("div", { class: "lab-plots" }, contourBox, convBox),
+  stepNote,
   rows,
   h("div", { class: "widget-row", style: "margin-top:12px" }, playBtn, stepBtn, h("label", { class: "ctl" }, "速度 ", speedSel), frameOut),
   h("p", { class: "hint-text" }, "點擊等高線圖可以更換起點；滑鼠移到路徑上可以看每一步的 f 值。")));
@@ -124,6 +139,13 @@ function renderRows() {
 }
 
 function describe(t) {
+  if (constrained()) {
+    if (t.message) return t.message;
+    const x = t.xs[t.xs.length - 1], xs = st.grid.minima[0];
+    const d = `‖x−x*‖ = ${fmt(Math.hypot(x[0] - xs[0], x[1] - xs[1]))} · 違反量 ${fmt(t.violation)}`;
+    if (t.status === "diverged") return `第 ${t.n_iter + 1} 步發散`;
+    return `${t.n_iter} 步${t.status === "stopped" ? "停止" : ""} · ${d}`;
+  }
   const gap = t.fs[t.fs.length - 1] - (st.grid.fstar ?? 0);
   if (t.status === "diverged") return `第 ${t.n_iter + 1} 步發散`;
   const ev = t.evals !== undefined ? ` · ${t.evals} 次 f 計算` : "";
@@ -135,7 +157,8 @@ function describe(t) {
 function visibleSeries() {
   return data.algos.map((id, i) => ({ id, i, t: st.traces.find((t) => t.algo === id) }))
     .filter((s) => s.t && st.enabled.has(s.id))
-    .map((s) => ({ xs: s.t.xs, fs: s.t.fs, status: s.t.status, radius: s.t.radius, poly: s.t.poly, polyKind: s.t.poly_kind, label: data.optimizers[s.id].name, color: seriesColor(s.i) }));
+    .map((s) => ({ xs: s.t.xs, fs: s.t.fs, status: s.t.status, radius: s.t.radius, poly: s.t.poly, polyKind: s.t.poly_kind, label: data.optimizers[s.id].name, color: seriesColor(s.i),
+      info: s.t.info, ...(s.t.outer ? { dots: true, big: s.t.outer } : {}) }));
 }
 
 function maxLen() { return Math.max(1, ...visibleSeries().map((s) => s.xs.length)); }
@@ -143,7 +166,10 @@ function maxLen() { return Math.max(1, ...visibleSeries().map((s) => s.xs.length
 function redraw() {
   const series = visibleSeries();
   contour.setSeries(series);
-  conv.setSeries(series, st.grid.fstar ?? 0, st.spec.n_iter);
+  if (constrained()) {
+    const xs = st.grid.minima[0];
+    conv.setSeries(series.map((s) => ({ ...s, fs: s.xs.map(([a, b]) => Math.hypot(a - xs[0], b - xs[1])) })), 0, st.spec.n_iter);
+  } else conv.setSeries(series, st.grid.fstar ?? 0, st.spec.n_iter);
   for (const t of st.traces) if (resultEls[t.algo]) {
     resultEls[t.algo].textContent = describe(t);
     resultEls[t.algo].classList.toggle("diverged", t.status === "diverged");
@@ -157,6 +183,21 @@ function setFrame(k) {
   conv.setFrame(k);
   const shown = Math.min(k, maxLen() - 1);
   frameOut.textContent = Number.isFinite(k) ? `第 ${shown} 步` : "";
+  if (constrained()) stepNote.textContent = visibleSeries().filter((s) => s.info).map((s) => {
+    const i = Math.min(k, s.xs.length - 1), info = s.info[i];
+    if (!info) return `${s.label}：起點`;
+    const num = (v) => (Number.isInteger(v) ? String(v) : fmt(v));
+    const fv = (v) => (Array.isArray(v) ? `(${v.map(num).join(", ")})` : num(v));
+    return `${s.label} 第 ${i} 步：` + Object.entries(info).map(([n, v]) => `${n} = ${fv(v)}`).join(" · ");
+  }).join("\n");
+}
+
+function renderProblemNote() {
+  const c = constrained();
+  problemNote.hidden = !c;
+  stepNote.hidden = !c;
+  problemNote.textContent = c ? st.grid.note : "";
+  convTitle.textContent = c ? "‖xₖ − x*‖：到有限制最優解的距離（對數座標）" : "f(xₖ) − f*（對數座標）";
 }
 
 // ---------- animation ----------
@@ -206,7 +247,7 @@ async function recompute() {
     if (grid && !spec.x0) spec.x0 = grid.x0;
     const traces = await call("traces", spec);
     if (version !== st.version) return; // a newer request superseded this one
-    if (grid) { st.grid = grid; contour.setGrid(grid); }
+    if (grid) { st.grid = grid; contour.setGrid(grid); renderProblemNote(); }
     st.traces = traces;
     pause();
     st.frame = Infinity;
@@ -227,6 +268,7 @@ problemSel.addEventListener("change", () => {
 // ---------- boot ----------
 renderProblemParams();
 renderRows();
+renderProblemNote();
 contour.setGrid(st.grid);
 redraw();
 warmUp().catch(() => {});

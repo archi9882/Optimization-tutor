@@ -10,10 +10,11 @@ from __future__ import annotations
 import inspect
 from types import ModuleType
 
-from . import (active_set, adagrad, adam, barrier, bfgs, branch_bound, coordinate,
-               cutting_plane, dual_simplex, dynamic_programming, gauss_newton, gd,
+from . import (active_set, adagrad, adam, augmented_lagrangian, barrier, barrier_nl,
+               bfgs, branch_bound, coordinate, cutting_plane, frank_wolfe, dual_simplex, dynamic_programming, gauss_newton, gd,
                greedy, hungarian, lbfgs, lm, momentum, ncg, nelder_mead, nesterov,
-               newton, pattern_search, powell, rmsprop, sgd, simplex, tabu,
+               newton, pattern_search, penalty, powell, projected_gradient, rmsprop,
+               sgd, simplex, tabu,
                trust_region, two_opt)
 
 MODULES: dict[str, ModuleType] = {
@@ -28,6 +29,9 @@ MODULES: dict[str, ModuleType] = {
     "dynamic_programming": dynamic_programming, "greedy": greedy,
     "hungarian": hungarian, "two_opt": two_opt, "tabu": tabu,
     "nelder_mead": nelder_mead, "powell": powell, "pattern_search": pattern_search,
+    "penalty": penalty, "barrier_nl": barrier_nl,
+    "augmented_lagrangian": augmented_lagrangian,
+    "projected_gradient": projected_gradient, "frank_wolfe": frank_wolfe,
 }
 
 

@@ -1,5 +1,6 @@
 // Shared canvas renderers.
-//   ContourPlot     – renderer ①: 2D level sets + optimizer trajectories;
+//   ContourPlot     – renderer ①: 2D level sets + optimizer trajectories
+//                     (grid.constraints: shaded infeasible area + g = 0 curves);
 //                     with setRegion() also renderer ②: feasible polygon,
 //                     constraint lines and iso-objective lines for LP/QP
 //   ConvergencePlot – f(x_k) − f* on a log axis, one line per optimizer
@@ -289,6 +290,74 @@ export class ContourPlot {
       c.restore();
     }
   }
+  // Constrained problems: grid.constraints = [{kind, label, z}] with g sampled
+  // on the grid (g <= 0 feasible, or g = 0). Wash out (per pixel, bilinear g)
+  // where any inequality is violated, then draw each g = 0 curve with
+  // marching squares.
+  drawConstraints(c) {
+    const g = this.grid, cons = g.constraints, nx = g.x.length, ny = g.y.length;
+    const ineq = cons.filter((k) => k.kind !== "eq");
+    if (ineq.length) {
+      const W = this.canvas.width, H = this.canvas.height;
+      const off = document.createElement("canvas");
+      off.width = W; off.height = H;
+      const octx = off.getContext("2d");
+      octx.fillStyle = css("--surface-2"); // grey wash that also fades the contours
+      const hex = octx.fillStyle; // normalised "#rrggbb"
+      const rgb = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+      const img = octx.createImageData(W, H);
+      for (let py = 0; py < H; py++) {
+        const fj = Math.min(ny - 1.000001, Math.max(0, (1 - py / H) * (ny - 1)));
+        const j = Math.floor(fj), v = fj - j;
+        for (let px = 0; px < W; px++) {
+          const fi = Math.min(nx - 1.000001, Math.max(0, (px / W) * (nx - 1)));
+          const i = Math.floor(fi), u = fi - i;
+          const bad = ineq.some(({ z }) => (1 - u) * (1 - v) * z[j][i] + u * (1 - v) * z[j][i + 1]
+            + u * v * z[j + 1][i + 1] + (1 - u) * v * z[j + 1][i] > 0);
+          if (!bad) continue;
+          const o = 4 * (py * W + px);
+          img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 215;
+        }
+      }
+      octx.putImageData(img, 0, 0);
+      c.save();
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.drawImage(off, 0, 0);
+      c.restore();
+    }
+    const sx = this.w / (nx - 1), sy = this.h / (ny - 1);
+    c.save();
+    c.font = `12px ${css("--font")}`;
+    cons.forEach((k, n) => {
+      const segs = isoSegments(k.z, 0);
+      c.strokeStyle = k.kind === "eq" ? css("--accent") : css("--ink-2");
+      c.lineWidth = k.kind === "eq" ? 2 : 1.5;
+      c.beginPath();
+      for (const [a, b, p, q] of segs) { c.moveTo(a * sx, this.h - b * sy); c.lineTo(p * sx, this.h - q * sy); }
+      c.stroke();
+      if (!segs.length || !k.label) return;
+      // Label at a point along the curve, staggered between constraints.
+      const [a, b] = segs[Math.floor(segs.length * (0.3 + 0.15 * (n % 3)))];
+      const tw = c.measureText(k.label).width;
+      const lx = Math.max(4, Math.min(this.w - tw - 8, a * sx + 6));
+      const ly = Math.max(14, Math.min(this.h - 6, this.h - b * sy - 4));
+      c.fillStyle = css("--surface"); c.globalAlpha = 0.85;
+      c.fillRect(lx - 2, ly - 12, tw + 4, 15);
+      c.globalAlpha = 1; c.fillStyle = css("--ink-2");
+      c.textAlign = "left"; c.textBaseline = "alphabetic";
+      c.fillText(k.label, lx, ly);
+    });
+    if (g.unconstrained) {
+      // Where f alone would go: the constraint is what stops it.
+      const [px, py] = this.toPx(...g.unconstrained);
+      c.strokeStyle = css("--muted"); c.lineWidth = 1.5;
+      c.beginPath(); c.arc(px, py, 5, 0, 7); c.stroke();
+      c.fillStyle = css("--muted"); c.textAlign = "left"; c.textBaseline = "middle";
+      c.fillText("無限制最小值", Math.min(px + 8, this.w - 80), py);
+    }
+    c.restore();
+  }
+
   setFrame(k) { this.frame = k; this.draw(); }
 
   resize() {
@@ -340,6 +409,7 @@ export class ContourPlot {
     });
     c.globalAlpha = 1;
     if (this.region) this.drawRegion(c);
+    if (this.grid.constraints) this.drawConstraints(c);
     c.strokeStyle = css("--ink-2");
     c.lineWidth = 1.5;
     for (const m of this.grid.minima) {
