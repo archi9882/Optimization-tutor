@@ -10,7 +10,7 @@ SKELETON = demos.helpers_source("active_set") + '''def active_set_step(x, W, Q, 
 
     目標 min ½ xᵀQx + qᵀx，限制 A x ≤ b；W 是目前視為等式的限制編號。
     """
-    # TODO 1: 依 |W| = 0、1、2 求出在 W 上的最佳方向 p
+    # TODO 1: 依 |W| = 0、1、2 求出在 W 上的最優方向 p
     # TODO 2: p ≈ 0 時算乘數 λ；全部 ≥ 0 就回傳 done=True，否則移除 λ 最負的限制
     # TODO 3: p ≠ 0 時沿 p 走，遇到第一條擋住的限制就停下並加入 W
     raise NotImplementedError
@@ -24,7 +24,7 @@ def check(ns: dict) -> tuple:
     """Run the whole active-set method with the learner's step."""
     ref = lp.run_active_set(_P)
     user = lp.run_active_set(_P, ns["active_set_step"])
-    results = compare_runs(user, ref, _P.objective, "求出最佳種植計畫 (3, 4.5)")
+    results = compare_runs(user, ref, _P.objective, "求出最優種植計畫 (3, 4.5)")
     return results, as_trace(user, _P.objective), as_trace(ref, _P.objective)
 
 
@@ -34,7 +34,7 @@ EXERCISE = Exercise(
     skeleton=SKELETON,
     hints=[
         "工作集 W 裡的限制被當成等式。|W| = 1 時只能沿著那條線移動，方向 t = (−a₂, a₁)。",
-        "沿 t 的最佳步長 = −(tᵀg) / (tᵀQt)，其中 g = Qx + q；擋住的限制看 a_iᵀp > 0 的那些。",
+        "沿 t 的最優步長 = −(tᵀg) / (tᵀQt)，其中 g = Qx + q；擋住的限制看 a_iᵀp > 0 的那些。",
         "乘數由 g + Σ λ_i a_i = 0 求出；λ < 0 表示那條限制其實在把 x 往可行域外推，應該放開。",
     ],
     solution=demos.source("active_set"),

@@ -52,10 +52,10 @@ def run_branch_bound(prob: L.LP, decide=branch_bound.bb_decide, max_nodes: int =
         where = _bound_text(prob, bounds)
         node = {"id": nid, "parent": parent, "label": where, "x": x, "z": z, "action": action[0]}
         if action[0] == "infeasible":
-            note = f"節點 {nid}（{where}）：LP 鬆弛不可行，剪掉。"
+            note = f"節點 {nid}（{where}）：LP 鬆弛不可行，剪枝。"
         elif action[0] == "prune":
             note = (f"節點 {nid}（{where}）：LP 鬆弛最優 ({L._g(x[0])}, {L._g(x[1])})，z = {L._g(z)}，"
-                    f"不比現有最佳 {L._g(best_z)} 好，剪掉。")
+                    f"不比現有最佳 {L._g(best_z)} 好，剪枝。")
         elif action[0] == "incumbent":
             best_z, best_x = z, x
             note = (f"節點 {nid}（{where}）：LP 鬆弛最優 ({L._g(x[0])}, {L._g(x[1])}) 剛好是整數，"

@@ -6,7 +6,7 @@ from ..grading import Exercise, StepCase
 from ._combocheck import compare
 
 SKELETON = '''def bellman_stage(V_next, t, S, inflow, value):
-    """由下個月的價值表 V_next 算出這個月的 (V, 最佳放水量)。
+    """由下個月的價值表 V_next 算出這個月的 (V, 最優放水量)。
     蓄水量 s = 0…S；可放水量 r = 0…s + inflow；超過容量 S 的水會溢流。
     value(t, r) 是第 t 個月放 r 單位水的收益。"""
     # TODO 1: 對每個 s，試所有可放水量 r
@@ -50,5 +50,5 @@ EXERCISE = Exercise(
     ],
     adapter=None, reference=None, demo=None,
     check=check,
-    loop_note="上方動畫從 8 月往回，每個月呼叫一次 bellman_stage() 填一欄價值表；填完後外層迴圈從 3 月、蓄水 2 開始照著表中的最佳放水量往前走。",
+    loop_note="上方動畫從 8 月往回，每個月呼叫一次 bellman_stage() 填一欄價值表；填完後外層迴圈從 3 月、蓄水 2 開始照著表中的最優放水量往前走。",
 )

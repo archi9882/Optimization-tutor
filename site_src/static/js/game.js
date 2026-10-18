@@ -69,6 +69,12 @@ if (article && article.dataset.detailed === "1") {
   const el = document.getElementById("mastery");
   const draw = () => el && renderMastery(el, id, cardCount, hasPractice);
   draw();
+  // recordVisit() above has tried storage, so storageAvailable() is now known.
+  if (!P.storageAvailable()) {
+    const note = h("p", { class: "storage-note", role: "note" },
+      "這個瀏覽器無法使用本機儲存（例如私密瀏覽或封鎖了網站資料）：練習與複習進度只保留到關閉分頁為止。");
+    (el || article.querySelector(".algo-head")).after(note);
+  }
   window.addEventListener("ot-progress", draw);
   window.addEventListener("storage", (e) => { if (e.key === P.KEY) draw(); });
 }

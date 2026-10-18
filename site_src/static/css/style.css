@@ -132,6 +132,11 @@ button { font: inherit; color: inherit; }
 .algo-head .en { font-size: 0.55em; color: var(--muted); font-weight: 400; margin-left: 6px; }
 .meta-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .lineage { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 14px; color: var(--ink-2); }
+.storage-note {
+  border: 1px solid var(--border); color: var(--ink-2); border-radius: 8px;
+  padding: 6px 12px; font-size: 13px; margin: 10px 0 0;
+}
+.btn-small { padding: 3px 10px; font-size: 13px; }
 .draft-note {
   background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px;
   padding: 8px 12px; font-size: 14px; margin: 14px 0 0;
@@ -190,7 +195,9 @@ button { font: inherit; color: inherit; }
   display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
   padding: 8px 10px; border-radius: 8px; background: var(--page);
 }
-.algo-row.off { opacity: .55; }
+/* A hidden series: dim the swatch and controls, keep the text readable (>= 4.5:1). */
+.algo-row.off .swatch, .algo-row.off input[type="range"] { opacity: .4; }
+.algo-row.off .algo-name, .algo-row.off .slider, .algo-row.off .slider output, .algo-row.off .algo-result { color: var(--muted); font-weight: 400; }
 .algo-name { display: inline-flex; align-items: center; gap: 8px; min-width: 9em; font-weight: 600; font-size: 14px; color: var(--ink); }
 .swatch { width: 18px; height: 3px; border-radius: 2px; display: inline-block; }
 .algo-result { margin-left: auto; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }

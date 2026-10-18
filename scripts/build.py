@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from optlab import OPTIMIZERS, api, demos, lp as lpmod  # noqa: E402
+from optlab.optimizers import N_ITER, PROBLEM_PARAMS, Param  # noqa: E402
 from optlab.exercises import EXERCISES  # noqa: E402
 
 CONTENT = ROOT / "content"
@@ -108,13 +109,15 @@ def to_script_json(obj: object) -> str:
     return json.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
 
 
+def slider_meta(p: Param) -> dict:
+    """One lab slider: label, default, unit and every value it can take."""
+    return {"name": p.name, "default": p.default, "label": p.label or p.name,
+            "unit": p.unit, "values": p.values()}
+
+
 def optimizer_meta() -> dict:
     """Optimizer ids -> {name, params[]} for the lab's sliders."""
-    return {o.id: {"name": o.name,
-                   "params": [{"name": p.name, "default": p.default,
-                               "lo": p.lo, "hi": p.hi, "log": p.log,
-                               "label": p.label or p.name}
-                              for p in o.params]}
+    return {o.id: {"name": o.name, "params": [slider_meta(p) for p in o.params]}
             for o in OPTIMIZERS.values()}
 
 
@@ -131,7 +134,13 @@ def lab_data(cfg: dict) -> dict:
     spec["runs"] = [{"algo": a, "params": params[a]} for a in algos]
     out = {"spec": spec, "enabled": cfg["algos"], "algos": algos,
            "grid": grid, "traces": api.traces(spec),
-           "optimizers": {a: optimizer_meta()[a] for a in algos}}
+           "optimizers": {a: optimizer_meta()[a] for a in algos},
+           "problem_params": {k: [slider_meta(p) for p in v]
+                              for k, v in PROBLEM_PARAMS.items()},
+           "n_iter": slider_meta(N_ITER),
+           # Tolerance of the "f - f* < tol 於第 k 步" read-out; pages of
+           # derivative-free methods quote 1e-8 and set lab.reach_tol.
+           "reach_tol": cfg.get("reach_tol", 1e-10)}
     if "problems" in cfg:  # problem menu of this page (default: the unconstrained zoo)
         assert cfg["problem"] in cfg["problems"], "lab.problem must be in lab.problems"
         out["problems"] = cfg["problems"]

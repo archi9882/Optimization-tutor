@@ -2,7 +2,7 @@
 // the method, stepped together with its tableau / central path / working set.
 // First frame comes from build-time data; slider edits re-run optlab.lp in Pyodide.
 
-import { ContourPlot, seriesColor, fmt } from "./plots.js";
+import { ContourPlot, seriesColor, fmt, touchUI } from "./plots.js";
 import { call, onState, warmUp } from "./py.js";
 
 const data = JSON.parse(document.getElementById("lp-data").textContent);
@@ -73,7 +73,9 @@ mount.append(h("div", { class: "widget lab lp-lab" },
   h("div", { class: `lab-plots${st.res.method === "cutting_plane" ? " even" : ""}` }, plotBox, h("div", {}, panelTitle, panel)),
   note,
   h("div", { class: "widget-row" }, resetBtn, prevBtn, playBtn, nextBtn, counter),
-  h("p", { class: "hint-text" }, "滑鼠移到路徑上可以看每一步的座標與目標值；拖動係數滑桿會重新求解。")));
+  h("p", { class: "hint-text" }, touchUI()
+    ? "點一下路徑上的點可以看那一步的座標與目標值；拖動係數滑桿會重新求解。"
+    : "滑鼠移到路徑上可以看每一步的座標與目標值；拖動係數滑桿會重新求解。")));
 
 const plot = new ContourPlot(plotBox, { maxHeight: 440 });
 
@@ -125,7 +127,7 @@ function activeSetPanel(k) {
     h("p", { class: "hint-text" }, `目前 x = (${fmt(s.x[0])}, ${fmt(s.x[1])})，目標值 ${fmt(s.z)}。`));
 }
 
-const ACTION = { branch: "分支", incumbent: "新的最佳解", prune: "以界限剪掉", infeasible: "不可行" };
+const ACTION = { branch: "分支", incumbent: "新的最佳解", prune: "以界限剪枝", infeasible: "不可行" };
 
 function treePanel(k) {
   const step = st.res.steps[k];

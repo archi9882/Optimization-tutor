@@ -203,7 +203,7 @@ def run_two_opt(step=two_opt_demo.two_opt_step, n: int = 9, seed: int = FIELD_SE
         out = step(tour, D)
         if out is None:
             status = "local_opt"
-            steps[-1]["note"] += "沒有任何 2-opt 交換能再縮短：到達局部最佳。"
+            steps[-1]["note"] += "沒有任何 2-opt 交換能再縮短：到達局部最優。"
             break
         new, i, j = out
         before = L(tour, D)
@@ -234,7 +234,7 @@ def run_tabu(step=tabu_demo.tabu_step, n: int = 9, seed: int = FIELD_SEED,
     tabu: dict = {}
     steps = [{"tour": list(tour), "length": best_len, "best": list(best), "best_len": best_len,
               "tabu": [], "seg": None,
-              "note": f"從 2-opt 的局部最佳出發（{best_len:.3f} km）。2-opt 到這裡就停了。"}]
+              "note": f"從 2-opt 的局部最優出發（{best_len:.3f} km）。2-opt 到這裡就停了。"}]
     for it in range(iters):
         out = step(tour, D, tabu, best_len)
         if out is None:
@@ -276,7 +276,7 @@ META = {
     "two_opt": ("巡田路線（旅行推銷員問題）",
                 "從田區 1 出發走遍 9 塊田區再回來，求最短路線（km）。"),
     "tabu": ("巡田路線（旅行推銷員問題）",
-             "和 2-opt 頁相同的 9 塊田區。從 2-opt 停下來的局部最佳出發。"),
+             "和 2-opt 頁相同的 9 塊田區。從 2-opt 停下來的局部最優出發。"),
 }
 
 

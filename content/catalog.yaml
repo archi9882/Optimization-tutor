@@ -132,7 +132,7 @@ algorithms:
     info: first-order
     tags: [deterministic, local]
     domains: [ml]
-    summary: 先沿慣性往前看一步再算梯度，在凸問題上達到一階方法的最佳收斂率。
+    summary: 先沿慣性往前看一步再算梯度，在凸問題上達到一階方法的最優收斂率。
     after: [momentum]
   - id: adagrad
     name: AdaGrad
@@ -304,7 +304,7 @@ algorithms:
     info: second-order
     tags: [deterministic, interior]
     domains: [engineering, energy]
-    summary: 在可行域邊界築一道趨近無窮的牆，從內部逼近最佳解。
+    summary: 在可行域邊界築一道趨近無窮的牆，從內部逼近最優解。
     after: [newton]
   - id: augmented-lagrangian
     name: 增廣 Lagrangian 法
@@ -395,7 +395,7 @@ algorithms:
     info: structure
     tags: [deterministic, exact]
     domains: [finance, engineering]
-    summary: 猜測哪些不等式限制在最佳解是緊的，逐步增刪直到 KKT 成立。
+    summary: 猜測哪些不等式限制在最優解是緊的，逐步增刪直到 KKT 成立。
 
   # ---- 整數與組合 ----
   - id: branch-and-bound
@@ -406,7 +406,7 @@ algorithms:
     info: structure
     tags: [deterministic, exact]
     domains: [logistics, agriculture, energy]
-    summary: 用 LP 鬆弛給出界限，剪掉不可能更好的分支，整數規劃的骨幹。
+    summary: 用 LP 鬆弛給出界限，對不可能更好的分支剪枝，整數規劃的骨幹。
     after: [simplex]
   - id: cutting-plane
     name: 割平面法
@@ -435,7 +435,7 @@ algorithms:
     info: structure
     tags: [deterministic, heuristic]
     domains: [logistics]
-    summary: 每步都選當下最好的選項；對擬陣結構保證最佳，否則只是近似。
+    summary: 每步都選當下最好的選項；對擬陣結構保證最優，否則只是近似。
   - id: hungarian
     name: 匈牙利演算法
     en: Hungarian Algorithm
@@ -444,7 +444,7 @@ algorithms:
     info: structure
     tags: [deterministic, exact, polynomial]
     domains: [logistics, agriculture]
-    summary: 在多項式時間內解出最佳指派問題，例如把機具分派到田區。
+    summary: 在多項式時間內解出最優指派問題，例如把機具分派到田區。
   - id: two-opt
     name: 2-opt 局部搜尋
     en: 2-opt Local Search
@@ -462,7 +462,7 @@ algorithms:
     info: zero-order
     tags: [deterministic, heuristic]
     domains: [logistics]
-    summary: 記住最近走過的解並禁止回頭，讓局部搜尋跳出局部最佳。
+    summary: 記住最近走過的解並禁止回頭，讓局部搜尋跳出局部最優。
     after: [two-opt]
 
   # ---- 啟發式 ----

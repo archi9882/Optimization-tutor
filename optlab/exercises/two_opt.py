@@ -33,7 +33,7 @@ def check(ns: dict) -> tuple:
     user = combo.run_two_opt(ns["two_opt_step"])
     seq = lambda o: [s["tour"] for s in o["steps"]]  # noqa: E731
     return compare(round(user["length"], 6), round(ref["length"], 6), seq(user), seq(ref),
-                   "停在局部最佳（18.643 km）", fmt=lambda v: f"{v:.3f} km"), None, None
+                   "停在局部最優（18.643 km）", fmt=lambda v: f"{v:.3f} km"), None, None
 
 
 EXERCISE = Exercise(

@@ -1,42 +1,42 @@
 // Interactive lab: race optimizers on a 2D problem.
 // First frame comes from build-time data; edits re-run optlab in Pyodide.
 
-import { ContourPlot, ConvergencePlot, seriesColor, fmt } from "./plots.js";
+import { ContourPlot, ConvergencePlot, seriesColor, fmt, touchUI } from "./plots.js";
 import { call, onState, warmUp } from "./py.js";
 
 const data = JSON.parse(document.getElementById("lab-data").textContent);
 const mount = document.getElementById("lab");
 
+// Slider grids (data.problem_params / optimizers[..].params[..].values) come
+// from optlab.sliders at build time, so every position is a "nice" number.
 const PROBLEMS = {
-  quadratic: { name: "二次碗", params: [
-    { name: "kappa", label: "條件數 κ", lo: 1, hi: 200, log: true, default: 10 },
-    { name: "theta_deg", label: "旋轉 θ", lo: 0, hi: 90, log: false, default: 0, unit: "°" },
-  ] },
-  rosenbrock: { name: "Rosenbrock 香蕉谷", params: [] },
-  himmelblau: { name: "Himmelblau 四谷", params: [] },
+  quadratic: "二次碗",
+  rosenbrock: "Rosenbrock 香蕉谷",
+  himmelblau: "Himmelblau 四谷",
   // Constrained problems (offered only on pages that list them in lab.problems).
-  fert_budget: { name: "施肥預算（三角形）", params: [] },
-  fert_eq: { name: "預算全部用完（等式）", params: [] },
-  fert_disk: { name: "土壤養分圓盤", params: [] },
-  reservoir: { name: "兩座水庫放水（箱型）", params: [] },
-  rosen_disk: { name: "Rosenbrock + 圓盤（非凸）", params: [] },
+  fert_budget: "施肥預算（三角形）",
+  fert_eq: "預算全部用完（等式）",
+  fert_disk: "土壤養分圓盤",
+  reservoir: "兩座水庫放水（箱型）",
+  rosen_disk: "Rosenbrock + 圓盤（非凸）",
 };
+const problemParams = (id) => data.problem_params[id] || [];
+// "f − f* < tol 於第 k 步" uses the same tolerance as the page text.
+const REACH_TOL = data.reach_tol ?? 1e-10;
 const PROBLEM_IDS = data.problems || ["quadratic", "rosenbrock", "himmelblau"];
 // With constraints the gradient of f is not zero at the optimum, so the
 // convergence plot shows the distance to the constrained optimum x* instead.
 const constrained = () => !!st.grid.constraints;
 
-const st = {
+const initial = () => ({
   spec: structuredClone(data.spec),
   enabled: new Set(data.enabled),
   params: Object.fromEntries(data.spec.runs.map((r) => [r.algo, { ...r.params }])),
   traces: data.traces,
   grid: data.grid,
   frame: Infinity,
-  playing: false,
-  speed: 30,
-  version: 0,
-};
+});
+const st = { ...initial(), playing: false, speed: 30, version: 0 };
 
 // ---------- small DOM helpers ----------
 const h = (tag, attrs = {}, ...kids) => {
@@ -50,32 +50,42 @@ const h = (tag, attrs = {}, ...kids) => {
   return el;
 };
 
-function slider({ label, lo, hi, log, value, unit = "", onInput }) {
-  const toPos = (v) => (log ? (Math.log(v) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)) : (v - lo) / (hi - lo)) * 1000;
-  const fromPos = (p) => {
-    const u = p / 1000;
-    const v = log ? Math.exp(Math.log(lo) + u * (Math.log(hi) - Math.log(lo))) : lo + u * (hi - lo);
-    return Number(v.toPrecision(3));
+// A slider over a fixed list of values: the range input moves an index, so
+// every position is exactly one of `values` (no rounding of a continuous scale).
+function slider({ label, values, value, unit = "", onInput }) {
+  const index = (v) => {
+    let best = 0;
+    values.forEach((x, i) => { if (Math.abs(x - v) < Math.abs(values[best] - v)) best = i; });
+    return best;
   };
-  const out = h("output", {}, `${value}${unit}`);
-  const input = h("input", { type: "range", min: 0, max: 1000, step: 1, "aria-label": label });
-  input.value = toPos(value);
+  const out = h("output", {});
+  const input = h("input", { type: "range", min: 0, max: values.length - 1, step: 1, "aria-label": label });
+  const show = (i) => {
+    const text = `${values[i]}${unit}`;
+    out.textContent = text;
+    input.setAttribute("aria-valuetext", text);
+  };
+  const el = h("label", { class: "slider" }, label, input, out);
+  el.setValue = (v) => { input.value = index(v); show(Number(input.value)); };
+  el.setValue(value);
   input.addEventListener("input", () => {
-    const v = fromPos(Number(input.value));
-    out.textContent = `${v}${unit}`;
-    onInput(v);
+    const i = Number(input.value);
+    show(i);
+    onInput(values[i]);
   });
-  return h("label", { class: "slider" }, label, input, out);
+  return el;
 }
 
 // ---------- layout ----------
 const pyStatus = h("span", { class: "py-status" });
 const problemSel = h("select", { "aria-label": "測試問題" },
-  ...PROBLEM_IDS.map((id) => h("option", { value: id }, PROBLEMS[id].name)));
+  ...PROBLEM_IDS.map((id) => h("option", { value: id }, PROBLEMS[id])));
 problemSel.value = st.spec.problem;
-const problemParams = h("span", { class: "widget-row" });
-const iterSlider = slider({ label: "迭代數", lo: 20, hi: 500, log: false, value: st.spec.n_iter,
-  onInput: (v) => { st.spec.n_iter = Math.round(v); schedule(false); } });
+const problemParamBox = h("span", { class: "widget-row" });
+const iterSlider = slider({ label: data.n_iter.label, values: data.n_iter.values, value: st.spec.n_iter,
+  onInput: (v) => { st.spec.n_iter = v; schedule(false); } });
+const resetBtn = h("button", { class: "btn btn-small", type: "button", title: "回到本頁預設的問題、參數、起點與迭代數",
+  onclick: () => reset() }, "重設");
 
 const contourBox = h("div", {}, h("div", { class: "plot-title" }, "等高線與路徑（等比例座標，＋為最小值）"));
 const convBox = h("div", {}, h("div", { class: "plot-title" }, "f(xₖ) − f*（對數座標）"));
@@ -90,17 +100,24 @@ const problemNote = h("p", { class: "hint-text" });
 const stepNote = h("p", { class: "step-note", "aria-live": "polite", style: "white-space: pre-line" });
 const convTitle = convBox.querySelector(".plot-title");
 
+const touch = touchUI();
 mount.append(h("div", { class: "widget lab" },
-  h("div", { class: "widget-row" }, h("label", { class: "ctl" }, "問題 ", problemSel), problemParams, iterSlider, pyStatus),
+  h("div", { class: "widget-row" }, h("label", { class: "ctl" }, "問題 ", problemSel), problemParamBox, iterSlider, resetBtn, pyStatus),
   problemNote,
   h("div", { class: "lab-plots" }, contourBox, convBox),
   stepNote,
   rows,
   h("div", { class: "widget-row", style: "margin-top:12px" }, playBtn, stepBtn, h("label", { class: "ctl" }, "速度 ", speedSel), frameOut),
-  h("p", { class: "hint-text" }, "點擊等高線圖可以更換起點；滑鼠移到路徑上可以看每一步的 f 值。")));
+  h("p", { class: "hint-text" }, touch
+    ? "點一下路徑上的點可以看那一步的 f 值；點其他位置可以更換起點。"
+    : "點擊等高線圖可以更換起點；滑鼠移到路徑上可以看每一步的 f 值。")));
 
 const contour = new ContourPlot(contourBox);
 const conv = new ConvergencePlot(convBox, { height: 300 });
+// Phones stack the plots in one column, where an equal-aspect contour plot of a
+// wide problem is short: match the convergence plot to it instead of towering over it.
+const narrow = typeof matchMedia === "function" ? matchMedia("(max-width: 760px)") : { matches: false };
+contour.onResize((ch) => conv.setHeight(narrow.matches ? Math.round(Math.max(180, Math.min(300, ch))) : 300));
 contour.onPick((x0) => { st.spec.x0 = x0.map((v) => Number(v.toFixed(3))); schedule(false); });
 
 onState((s) => {
@@ -109,7 +126,7 @@ onState((s) => {
 });
 
 function renderProblemParams() {
-  problemParams.replaceChildren(...PROBLEMS[st.spec.problem].params.map((p) => slider({
+  problemParamBox.replaceChildren(...problemParams(st.spec.problem).map((p) => slider({
     ...p, value: st.spec.problem_params[p.name] ?? p.default,
     onInput: (v) => { st.spec.problem_params[p.name] = v; schedule(true); },
   })));
@@ -138,20 +155,28 @@ function renderRows() {
   }));
 }
 
+// 1e-10 -> "10⁻¹⁰"
+const SUP = { "-": "⁻", 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
+const pow10 = (v) => `10${String(Math.round(Math.log10(v))).replace(/./g, (c) => SUP[c])}`;
+
+// Two step counts, each with its criterion: where the run stopped (the
+// runner's rule) and the first step with f − f* below the page's tolerance.
 function describe(t) {
+  if (t.status === "diverged") return `第 ${t.n_iter + 1} 步發散`;
   if (constrained()) {
     const x = t.xs[t.xs.length - 1], xs = st.grid.minima[0];
     const d = `‖x−x*‖ = ${fmt(Math.hypot(x[0] - xs[0], x[1] - xs[1]))} · 違反量 ${fmt(t.violation)}`;
-    if (t.status === "diverged") return `第 ${t.n_iter + 1} 步發散`;
-    if (t.message) return `${t.n_iter} 步停止：${t.message} · ${d}`;
-    return `${t.n_iter} 步${t.status === "stopped" ? "停止" : ""} · ${d}`;
+    if (t.message) return `第 ${t.n_iter} 步停止：${t.message} · ${d}`;
+    return `${t.status === "stopped" ? `第 ${t.n_iter} 步停止` : `${t.n_iter} 步內未停止`} · ${d}`;
   }
-  const gap = t.fs[t.fs.length - 1] - (st.grid.fstar ?? 0);
-  if (t.status === "diverged") return `第 ${t.n_iter + 1} 步發散`;
+  const fstar = st.grid.fstar ?? 0;
+  const gap = t.fs[t.fs.length - 1] - fstar;
+  const stop = { converged: `第 ${t.n_iter} 步停止（‖∇f‖ < 10⁻¹⁰）`, stopped: `第 ${t.n_iter} 步停止（演算法本身的停止條件）` }[t.status]
+    || `${t.n_iter} 步內未停止`;
+  const k = t.fs.findIndex((f) => f - fstar < REACH_TOL);
+  const reach = k >= 0 ? `f−f* < ${pow10(REACH_TOL)} 於第 ${k} 步` : `未達 f−f* < ${pow10(REACH_TOL)}`;
   const ev = t.evals !== undefined ? ` · ${t.evals} 次 f 計算` : "";
-  if (t.status === "converged") return `${t.n_iter} 步收斂 · f−f* = ${fmt(gap)}${ev}`;
-  if (t.status === "stopped") return `${t.n_iter} 步停止 · f−f* = ${fmt(gap)}${ev}`;
-  return `${t.n_iter} 步 · f−f* = ${fmt(gap)}${ev}`;
+  return `${reach} · ${stop} · 最後 f−f* = ${fmt(gap)}${ev}`;
 }
 
 function visibleSeries() {
@@ -264,11 +289,29 @@ async function recompute() {
 
 problemSel.addEventListener("change", () => {
   st.spec.problem = problemSel.value;
-  st.spec.problem_params = Object.fromEntries(PROBLEMS[st.spec.problem].params.map((p) => [p.name, p.default]));
+  st.spec.problem_params = Object.fromEntries(problemParams(st.spec.problem).map((p) => [p.name, p.default]));
   st.spec.x0 = null;
   renderProblemParams();
   schedule(true);
 });
+
+// Back to the page's defaults; the build-time traces are still valid, so no
+// Python call is needed.
+function reset() {
+  clearTimeout(timer);
+  gridDirty = false;
+  st.version++;               // drop any recompute still in flight
+  pause();
+  Object.assign(st, initial());
+  problemSel.value = st.spec.problem;
+  iterSlider.setValue(st.spec.n_iter);
+  renderProblemParams();
+  renderRows();
+  contour.setGrid(st.grid);
+  renderProblemNote();
+  frameOut.textContent = "";
+  redraw();
+}
 
 // ---------- boot ----------
 renderProblemParams();

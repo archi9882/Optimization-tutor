@@ -27,7 +27,7 @@ def check(ns: dict) -> tuple:
     user = combo.run_hungarian(ns["adjust"], ns["reduce_matrix"])
     seq = lambda o: [s["M"] for s in o["steps"]]  # noqa: E731
     fin = lambda o: [o.get("total"), o["steps"][-1]["assign"]]  # noqa: E731
-    return compare(fin(user), fin(ref), seq(user), seq(ref), "最佳指派（總時數 38）",
+    return compare(fin(user), fin(ref), seq(user), seq(ref), "最優指派（總時數 38）",
                    fmt=lambda v: f"總時數 {v[0]}，指派 {v[1]}"), None, None
 
 
@@ -37,7 +37,7 @@ EXERCISE = Exercise(
     required=("reduce_matrix",),
     skeleton=SKELETON,
     hints=[
-        "每列（或每欄）減去同一個常數，所有指派的總成本都減少同樣的量，最佳指派不變。",
+        "每列（或每欄）減去同一個常數，所有指派的總成本都減少同樣的量，最優指派不變。",
         "k 只從「列沒被蓋住而且欄也沒被蓋住」的元素裡找。",
         "交叉點要加 k：等於先把沒蓋住的列都減 k、再把蓋住的欄都加 k。",
     ],

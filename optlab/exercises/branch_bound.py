@@ -20,7 +20,7 @@ def bb_decide(x, z, best_z):
     """處理一個節點的 LP 鬆弛解 (x, z)，回傳要做的事：
     ("infeasible",)、("prune",)、("incumbent",) 或 ("branch", j, ⌊x_j⌋, ⌊x_j⌋ + 1)。"""
     # TODO 1: x 是 None：LP 不可行
-    # TODO 2: z 不比現有最佳 best_z 好：剪掉（最大化問題）
+    # TODO 2: z 不比現有最佳 best_z 好：剪枝（最大化問題）
     # TODO 3: 全是整數：新的現有最佳解；否則對最不整數的變數分支
     raise NotImplementedError
 '''
@@ -68,5 +68,5 @@ EXERCISE = Exercise(
     adapter=None, reference=None, demo=None,
     check=check,
     lp_preset="greenhouse",
-    loop_note="上方動畫每處理一個節點，就用頂點列舉解它的 LP 鬆弛，再呼叫一次 bb_decide() 決定剪掉、更新最佳解或分支；外層迴圈用堆疊管理待處理的節點（深度優先）。",
+    loop_note="上方動畫每處理一個節點，就用頂點列舉解它的 LP 鬆弛，再呼叫一次 bb_decide() 決定剪枝、更新最佳解或分支；外層迴圈用堆疊管理待處理的節點（深度優先）。",
 )

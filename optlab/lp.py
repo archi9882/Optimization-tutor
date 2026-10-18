@@ -222,7 +222,7 @@ def _shadow_prices(lp: LP, T) -> str:
         y = T[-1][2 + i]
         label = lp.labels[i].split("：")[0]
         parts.append(f"{label} {_g(abs(y))}")
-    return "影子價格（每多一單位資源，最佳目標值的變化）：" + "、".join(parts) + "。"
+    return "影子價格（每多一單位資源，最優目標值的變化）：" + "、".join(parts) + "。"
 
 
 def _snapshot(T, basis, cols, x, value, note, pivot=None) -> dict:

@@ -18,6 +18,9 @@ function fmt(v) {
 }
 export { fmt };
 
+/** True on devices without hover (phones, tablets): hints say "點一下" instead of "滑鼠移到". */
+export const touchUI = () => typeof matchMedia === "function" && matchMedia("(hover: none)").matches;
+
 function setupCanvas(canvas, cssW, cssH) {
   const dpr = window.devicePixelRatio || 1;
   canvas.style.height = `${cssH}px`;
@@ -71,10 +74,25 @@ export class ContourPlot {
     this.series = [];
     this.frame = Infinity;
     this.pickCb = null;
-    this.canvas.addEventListener("mousemove", (e) => this.hover(e));
-    this.canvas.addEventListener("mouseleave", () => { this.tip.hidden = true; });
+    this.resizeCb = null;
+    this.pointer = "mouse";
+    this.canvas.addEventListener("pointerdown", (e) => { this.pointer = e.pointerType || "mouse"; });
+    this.canvas.addEventListener("pointermove", (e) => {
+      if (e.pointerType !== "mouse") return;   // touch drags scroll the page
+      this.pointer = "mouse";
+      this.hover(e);
+    });
+    // Browsers send a compatibility mouseleave after a tap: keep the tapped tooltip.
+    this.canvas.addEventListener("mouseleave", () => { if (this.pointer === "mouse") this.tip.hidden = true; });
     this.canvas.addEventListener("click", (e) => {
-      if (!this.pickCb || !this.grid) return;
+      if (!this.grid) return;
+      // Touch has no hover: a tap on (or next to) a path point shows its tooltip.
+      if (this.pointer !== "mouse") {
+        if (this.showPoint(e.offsetX, e.offsetY, 18)) return;
+        if (!this.pickCb) { this.hover(e); return; }
+        this.tip.hidden = true;
+      }
+      if (!this.pickCb) return;
       const [x, y] = this.toData(e.offsetX, e.offsetY);
       this.pickCb([x, y]);
     });
@@ -83,6 +101,8 @@ export class ContourPlot {
   }
 
   onPick(cb) { this.pickCb = cb; this.canvas.style.cursor = "crosshair"; }
+  /** cb(heightPx) after every resize (the lab matches the convergence plot to it on phones). */
+  onResize(cb) { this.resizeCb = cb; if (this.h) cb(this.h); }
 
   setGrid(grid) {
     this.grid = grid;
@@ -399,6 +419,7 @@ export class ContourPlot {
     this.ctx = setupCanvas(this.canvas, this.w, this.h);
     this.cache = null;
     this.draw();
+    if (this.resizeCb) this.resizeCb(this.h);
   }
 
   toPx(x, y) {
@@ -545,31 +566,48 @@ export class ContourPlot {
     return (1 - u) * (1 - v) * g.z[j][i] + u * (1 - v) * g.z[j][i + 1] + u * v * g.z[j + 1][i + 1] + (1 - u) * v * g.z[j + 1][i];
   }
 
-  hover(e) {
-    if (!this.grid) return;
-    const px = e.offsetX, py = e.offsetY;
+  // Closest drawn path point within r px of (px, py), or null.
+  nearestPoint(px, py, r) {
     let best = null;
     for (const s of this.series) {
       const n = Math.min(s.xs.length, this.frame + 1);
       for (let k = 0; k < n; k++) {
         const [qx, qy] = this.toPx(...s.xs[k]);
         const d = Math.hypot(qx - px, qy - py);
-        if (d < 10 && (!best || d < best.d)) best = { d, s, k, qx, qy };
+        if (d < r && (!best || d < best.d)) best = { d, s, k, qx, qy };
       }
     }
-    if (best) {
-      const [x, y] = best.s.xs[best.k];
-      const f = best.s.fs ? best.s.fs[best.k] : this.fAt(x, y);
-      const fl = this.grid.flabel || "f";
-      this.tip.textContent = `${best.s.label} · 第 ${best.k} 步 · (${fmt(x)}, ${fmt(y)}) · ${fl} = ${fmt(f)}`;
-      this.tip.style.left = `${best.qx}px`; this.tip.style.top = `${best.qy}px`;
-    } else {
-      const [x, y] = this.toData(px, py);
-      const fl = this.grid.flabel || "f", sign = this.grid.sign || 1;
-      this.tip.textContent = `(${x.toFixed(2)}, ${y.toFixed(2)})  ${fl} ≈ ${fmt(sign * this.fAt(x, y))}${this.pickCb ? "  · 點擊設為起點" : ""}`;
-      this.tip.style.left = `${px}px`; this.tip.style.top = `${py}px`;
-    }
+    return best;
+  }
+
+  // Tooltip of the path point near (px, py); false if there is none.
+  showPoint(px, py, r = 10) {
+    const best = this.nearestPoint(px, py, r);
+    if (!best) return false;
+    const [x, y] = best.s.xs[best.k];
+    const f = best.s.fs ? best.s.fs[best.k] : this.fAt(x, y);
+    const fl = this.grid.flabel || "f";
+    this.tip.textContent = `${best.s.label} · 第 ${best.k} 步 · (${fmt(x)}, ${fmt(y)}) · ${fl} = ${fmt(f)}`;
+    this.placeTip(best.qx, best.qy);
+    return true;
+  }
+
+  // Show the tooltip above (x, y), shifted sideways so it stays inside the plot.
+  placeTip(x, y) {
     this.tip.hidden = false;
+    const half = this.tip.offsetWidth / 2;
+    const left = half * 2 >= this.w ? this.w / 2 : Math.min(Math.max(x, half), this.w - half);
+    this.tip.style.left = `${left}px`; this.tip.style.top = `${y}px`;
+  }
+
+  hover(e) {
+    if (!this.grid) return;
+    const px = e.offsetX, py = e.offsetY;
+    if (this.showPoint(px, py)) return;
+    const [x, y] = this.toData(px, py);
+    const fl = this.grid.flabel || "f", sign = this.grid.sign || 1;
+    this.tip.textContent = `(${x.toFixed(2)}, ${y.toFixed(2)})  ${fl} ≈ ${fmt(sign * this.fAt(x, y))}${this.pickCb && this.pointer === "mouse" ? "  · 點擊設為起點" : ""}`;
+    this.placeTip(px, py);
   }
 }
 
@@ -591,7 +629,14 @@ export class ConvergencePlot {
     this.fstar = 0;
     this.hoverK = null;
     this.canvas.addEventListener("mousemove", (e) => this.hover(e));
-    this.canvas.addEventListener("mouseleave", () => { this.tip.hidden = true; this.hoverK = null; this.draw(); });
+    this.pointer = "mouse";
+    this.canvas.addEventListener("pointerdown", (e) => { this.pointer = e.pointerType || "mouse"; });
+    this.canvas.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") this.pointer = "mouse"; });
+    this.canvas.addEventListener("click", (e) => this.hover(e));   // touch: tap = hover
+    this.canvas.addEventListener("mouseleave", () => {
+      if (this.pointer !== "mouse") return;   // compatibility event after a tap
+      this.tip.hidden = true; this.hoverK = null; this.draw();
+    });
     new ResizeObserver(() => this.resize()).observe(this.wrap);
     window.addEventListener("ot-theme", () => this.draw());
   }
@@ -606,6 +651,7 @@ export class ConvergencePlot {
   }
 
   setFrame(k) { this.frame = k; this.draw(); }
+  setHeight(height) { if (height !== this.height) { this.height = height; this.resize(); } }
   y(f) { return Math.log10(Math.max(f - this.fstar, 1e-16)); }
 
   resize() {

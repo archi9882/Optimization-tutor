@@ -105,13 +105,30 @@ for (const p of parts) {
   cloze.append(input);
 }
 
-const editor = h("textarea", { class: "editor", id: `scratch-${ex.id}`, spellcheck: "false", wrap: "off", "aria-label": "你的 Python 程式" });
+const editorHint = h("p", { class: "hint-text", id: `scratch-hint-${ex.id}` }, "Tab 縮排；按 Esc 再按 Tab 離開編輯區。");
+const editor = h("textarea", { class: "editor", id: `scratch-${ex.id}`, spellcheck: "false", wrap: "off",
+  "aria-label": "你的 Python 程式", "aria-describedby": editorHint.id });
 editor.value = saved.scratch || ex.skeleton;
 editor.addEventListener("input", () => { saved.scratch = editor.value; save(); });
+// Tab indents (Shift+Tab removes up to four leading spaces); after Esc the next
+// Tab moves focus as usual, so keyboard users are never trapped in the editor.
+let escaped = false;
+editor.addEventListener("blur", () => { escaped = false; });
 editor.addEventListener("keydown", (e) => {
-  if (e.key !== "Tab") return;
+  if (e.key === "Escape") { escaped = true; return; }
+  if (e.key !== "Tab") { if (e.key !== "Shift") escaped = false; return; }
+  if (escaped || e.ctrlKey || e.altKey || e.metaKey) return;
   e.preventDefault();
-  editor.setRangeText("    ", editor.selectionStart, editor.selectionEnd, "end");
+  if (e.shiftKey) {
+    const start = editor.value.lastIndexOf("\n", editor.selectionStart - 1) + 1;
+    const n = /^ {0,4}/.exec(editor.value.slice(start))[0].length;
+    if (!n) return;
+    const [a, b] = [editor.selectionStart, editor.selectionEnd];
+    editor.setRangeText("", start, start + n, "preserve");
+    editor.setSelectionRange(Math.max(start, a - n), Math.max(start, b - n));
+  } else {
+    editor.setRangeText("    ", editor.selectionStart, editor.selectionEnd, "end");
+  }
   saved.scratch = editor.value; save();
 });
 
@@ -119,7 +136,7 @@ let mode = saved.mode === "scratch" ? "scratch" : "cloze";
 const clozeBtn = h("button", { class: "seg", type: "button" }, `挖空（${inputs.length} 格）`);
 const scratchBtn = h("button", { class: "seg", type: "button" }, "從零寫");
 const clozeBox = h("div", {}, h("p", { class: "hint-text" }, "把示範程式中被挖掉的運算式填回去。"), cloze);
-const scratchBox = h("div", {}, h("p", { class: "hint-text" }, "只給函式骨架，整個函式自己寫。"), editor);
+const scratchBox = h("div", {}, h("p", { class: "hint-text" }, "只給函式骨架，整個函式自己寫。"), editor, editorHint);
 function setMode(m) {
   mode = m; saved.mode = m; save();
   clozeBtn.setAttribute("aria-pressed", String(m === "cloze"));

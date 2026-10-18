@@ -160,7 +160,7 @@ function drawDP(k) {
   const foot = h("tr", { class: "obj-row" }, h("th", { scope: "row" }, "入流"), ...r.inflow.map((v) => h("td", {}, String(v))), h("td", {}, ""));
   const wrow = h("tr", {}, h("th", { scope: "row" }, "權重"), ...r.weight.map((v) => h("td", {}, String(v))), h("td", {}, ""));
   view.replaceChildren(h("div", { class: "tableau-wrap" }, h("table", { class: "tableau" }, h("thead", {}, head), h("tbody", {}, ...rows, foot, wrow))));
-  viewTitle.textContent = "價值表 V（每格右下 r = 最佳放水量；框起來的是最佳路徑）";
+  viewTitle.textContent = "價值表 V（每格右下 r = 最優放水量；框起來的是最優路徑）";
   panelTitle.textContent = "放水計畫";
   panel.replaceChildren(s.path.length
     ? h("ul", { class: "wset" }, ...s.path.filter((p) => p.r !== null).map((p) => h("li", {}, `${r.months[p.t]}：蓄水 ${p.s}，放水 ${p.r}`)))

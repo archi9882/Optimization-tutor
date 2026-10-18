@@ -16,6 +16,7 @@ from typing import Callable
 
 from .demos import lab_step
 from .problems import Problem, Vec
+from .sliders import slider_values
 
 StepFn = Callable[[Vec, Problem, dict, dict], tuple[Vec, dict]]
 
@@ -30,6 +31,12 @@ class Param:
     hi: float
     log: bool = False
     label: str = ""
+    integer: bool = False   # slider shows whole numbers only
+    unit: str = ""
+
+    def values(self) -> list[float]:
+        """Every value the slider can take (see optlab.sliders)."""
+        return slider_values(self.lo, self.hi, self.log, self.default, self.integer)
 
 
 @dataclass(frozen=True)
@@ -90,7 +97,7 @@ OPTIMIZERS: dict[str, Optimizer] = {
                   lab_step("lm")),
         Optimizer("bfgs", "BFGS", [], lab_step("bfgs")),
         Optimizer("lbfgs", "L-BFGS",
-                  [Param("m", 5, 1, 10, False, "記憶組數 m")],
+                  [Param("m", 5, 1, 10, False, "記憶組數 m", integer=True)],
                   lab_step("lbfgs")),
         Optimizer("ncg", "非線性 CG", [], lab_step("ncg")),
         Optimizer("trust_region", "信賴域 (dogleg)",
@@ -106,18 +113,18 @@ OPTIMIZERS: dict[str, Optimizer] = {
                   lab_step("pattern_search")),
         # ---- constrained (problems with .constraints) ----
         Optimizer("penalty", "懲罰函數法",
-                  [Param("rho0", 1.0, 0.1, 100.0, True, "初始 ρ₀"),
+                  [Param("rho0", 1.0, 0.1, 1000.0, True, "初始 ρ₀"),
                    Param("gamma", 10.0, 2.0, 100.0, True, "放大倍數 γ"),
-                   Param("inner", 100, 5, 300, True, "內圈步數上限")],
+                   Param("inner", 100, 5, 300, True, "內圈步數上限", integer=True)],
                   lab_step("penalty")),
         Optimizer("barrier_nl", "障礙函數法",
                   [Param("mu0", 1.0, 0.01, 10.0, True, "初始 μ₀"),
                    Param("sigma", 10.0, 2.0, 100.0, True, "縮小倍數 σ"),
-                   Param("inner", 20, 1, 50, True, "內圈步數上限")],
+                   Param("inner", 20, 1, 50, True, "內圈步數上限", integer=True)],
                   lab_step("barrier_nl")),
         Optimizer("augmented_lagrangian", "增廣 Lagrangian",
                   [Param("rho", 10.0, 0.1, 1000.0, True, "懲罰係數 ρ（固定）"),
-                   Param("inner", 100, 5, 300, True, "內圈步數上限")],
+                   Param("inner", 100, 5, 300, True, "內圈步數上限", integer=True)],
                   lab_step("augmented_lagrangian")),
         Optimizer("projected_gradient", "投影梯度",
                   [Param("lr", 0.1, 1e-3, 1.0, True, _LR)],
@@ -125,3 +132,10 @@ OPTIMIZERS: dict[str, Optimizer] = {
         Optimizer("frank_wolfe", "Frank-Wolfe", [], lab_step("frank_wolfe")),
     ]
 }
+
+# Sliders that belong to the lab rather than to one optimizer.
+PROBLEM_PARAMS: dict[str, list[Param]] = {
+    "quadratic": [Param("kappa", 10, 1, 200, True, "條件數 κ"),
+                  Param("theta_deg", 0, 0, 90, False, "旋轉 θ", integer=True, unit="°")],
+}
+N_ITER = Param("n_iter", 150, 20, 500, False, "迭代數", integer=True)

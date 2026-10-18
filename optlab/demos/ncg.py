@@ -17,7 +17,7 @@ for k = 0, 1, 2, …:
 
 
 def secant_line_search(f, grad_fn, x, g, d):
-    """沿 d 用兩次梯度估計曲率 dᵀHd，取二次模型的最佳步長，再用 Armijo 保底。"""
+    """沿 d 用兩次梯度估計曲率 dᵀHd，取二次模型的最優步長，再用 Armijo 保底。"""
     slope = dot(g, d)
     t = 1e-6
     g_t = grad_fn((x[0] + t * d[0], x[1] + t * d[1]))
