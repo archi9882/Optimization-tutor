@@ -9,6 +9,35 @@ lab:
     gauss_newton: {alpha: 1.0}
   n_iter: 60
 practice: gauss_newton
+predict:
+  - id: p1
+    prompt: "換到二次碗（κ = 10），高斯-牛頓何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {problem: quadratic, n_iter: 60}
+    subject: gauss_newton
+    options:
+      - {label: "1 步", when: {reach_within: 1}}
+      - {label: "2～10 步", when: {reach_within: 10, not_reach_within: 1}}
+      - {label: "10 步內到不了", when: {not_reach_within: 10}}
+    explain: "二次碗可以寫成線性殘差的平方和。殘差是 x 的線性函數時，被忽略的 Σ rᵢ∇²rᵢ 項為零，JᵀJ 就是真正的 Hessian，高斯-牛頓等於牛頓法，1 步到底。"
+  - id: p2
+    prompt: "Rosenbrock（解處殘差為零）、α = 1，高斯-牛頓會？"
+    scenario: {problem: rosenbrock, n_iter: 60}
+    subject: gauss_newton
+    options:
+      - {label: "每一步 f 都下降", when: {rises_max: 0}}
+      - {label: "f 曾上升，但 5 步內就達到 10⁻¹⁰", when: {rises_min: 1, reach_within: 5}}
+      - {label: "f 曾上升，而且 5 步內到不了 10⁻¹⁰", when: {rises_min: 1, not_reach_within: 5}}
+    explain: "Rosenbrock 寫成 r = (1 − x, 10(y − x²))，第 1 步只看線性化的殘差，跳到 (1, −5.25)、f = 3906.25，比起點的 12.5 大很多；第 2 步就精確到達 (1, 1)。高斯-牛頓方向在 J 滿秩時是下降方向，但整步走下去不保證 f 下降。"
+  - id: p3
+    prompt: "換到 Himmelblau，從預設起點 (−0.5, −0.5) 出發，高斯-牛頓會？"
+    scenario: {problem: himmelblau, n_iter: 60}
+    subject: gauss_newton
+    show: [newton, gauss_newton]
+    options:
+      - {label: "收斂到一個最小值（f − f* < 10⁻¹⁰）", when: {reach_within: 60}}
+      - {label: "到不了最小值：最後 f − f* ≥ 1", when: {not_reach_within: 60, final_gap_above: 1}}
+      - {label: "發散", when: {status: diverged}}
+    explain: "Himmelblau 的殘差 r = (x² + y − 11, x + y² − 7) 在 (−0.5, −0.5) 的 Jacobian 是 [[2x, 1], [1, 2y]] = [[−1, 1], [1, −1]]，行列式為 0，正規方程沒有唯一解，高斯-牛頓完全不動，60 步後 f 仍是 179。同圖的牛頓法則爬到 f = 182 的局部最大值。"
 ---
 
 ## 定義

@@ -9,6 +9,36 @@ lab:
     trust_region: {radius0: 0.5}
   n_iter: 60
 practice: trust_region
+predict:
+  - id: p1
+    prompt: "Δ₀ 只有 0.05（很小的信賴範圍），何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {params: {trust_region: {radius0: 0.05}}, n_iter: 60}
+    subject: trust_region
+    options:
+      - {label: "40 步內", when: {reach_within: 40}}
+      - {label: "41～60 步", when: {reach_within: 60, not_reach_within: 40}}
+      - {label: "60 步內到不了", when: {not_reach_within: 60}}
+    explain: "每一步比較實際下降 ÷ 模型預測下降：比值 ≤ 0.1 就拒絕這一步並縮小 Δ；模型預測得準（比值 > 0.75）而且步子碰到邊界時，Δ 就加倍。半徑會自我調整，Δ₀ = 0.05 只讓頭幾步短一點，第 28 步就達到，和預設 Δ₀ = 0.5 的第 27 步差不多。"
+  - id: p2
+    prompt: "Δ₀ 調到 3（一開始幾乎不限制牛頓步）。會像牛頓法一樣 10 步內達到 f − f* < 10⁻¹⁰ 嗎？"
+    scenario: {params: {trust_region: {radius0: 3.0}}, n_iter: 60}
+    subject: trust_region
+    show: [newton, trust_region]
+    options:
+      - {label: "會，10 步內", when: {reach_within: 10}}
+      - {label: "不會，要 11～60 步", when: {reach_within: 60, not_reach_within: 10}}
+      - {label: "60 步內到不了", when: {not_reach_within: 60}}
+    explain: "牛頓法第 6 步達到，但途中跳到 f = 793 的點再折回來；信賴域法拒絕讓 f 上升的大步（這次被拒絕 5 次），每次拒絕把 Δ 縮成 1/4，之後只能沿著谷前進，第 31 步才達到。穩健的代價是放棄了這條「先上升」的捷徑。"
+  - id: p3
+    prompt: "換到 Himmelblau，從預設起點 (−0.5, −0.5)（牛頓法會停在局部最大值），信賴域法會？"
+    scenario: {problem: himmelblau, n_iter: 60}
+    subject: trust_region
+    show: [newton, trust_region]
+    options:
+      - {label: "收斂到一個最小值（f − f* < 10⁻¹⁰）", when: {reach_within: 60}}
+      - {label: "梯度歸零而停止，但 f − f* ≥ 1", when: {status: converged, final_gap_above: 1}}
+      - {label: "發散", when: {status: diverged}}
+    explain: "Hessian 不是正定時，本頁的 dogleg 改沿最陡下降方向走到圓的邊界，加上只接受讓 f 下降的步，所以不會往上爬：第 8 步收斂到最小值 (−2.81, 3.13)。"
 ---
 
 ## 定義

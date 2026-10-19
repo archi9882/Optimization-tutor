@@ -9,6 +9,34 @@ lab:
     lm: {lam0: 1.0}
   n_iter: 60
 practice: lm
+predict:
+  - id: p1
+    prompt: "λ₀ = 0.01（幾乎就是高斯-牛頓），在 Himmelblau 上，LM 的 f(xₖ) 會上升嗎？"
+    scenario: {params: {lm: {lam0: 0.01}}, n_iter: 60}
+    subject: lm
+    options:
+      - {label: "f 每步都不上升", when: {rises_max: 0}}
+      - {label: "有些步 f 會上升", when: {rises_min: 1}}
+    explain: "LM 每一步都先試走：f 沒有下降就拒絕這一步、把 λ 乘 10 再試，所以位置只會換到 f 更低的點；被拒絕的步原地不動（這次有 4 步），第 10 步達到 10⁻¹⁰。這是它和高斯-牛頓（第 1 步可能讓 f 暴增）最大的不同。"
+  - id: p2
+    prompt: "把初始阻尼 λ₀ 調到 1000（第一步幾乎是很短的梯度步），LM 何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {params: {lm: {lam0: 1000.0}}, n_iter: 60}
+    subject: lm
+    options:
+      - {label: "15 步內", when: {reach_within: 15}}
+      - {label: "16～60 步", when: {reach_within: 60, not_reach_within: 15}}
+      - {label: "60 步內到不了", when: {not_reach_within: 60}}
+    explain: "每接受一步 λ 就除以 10，λ = 1000 只要幾步就降到 1 以下，LM 步隨之變成高斯-牛頓步：第 8 步達到 10⁻¹⁰，和 λ₀ = 1 一樣。λ 是自動調整的阻尼，初始值不太重要。"
+  - id: p3
+    prompt: "換到 Rosenbrock（高斯-牛頓第 2 步就到答案），LM（λ₀ = 1）何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {problem: rosenbrock, n_iter: 60}
+    subject: lm
+    show: [gauss_newton, lm]
+    options:
+      - {label: "10 步內", when: {reach_within: 10}}
+      - {label: "11～60 步", when: {reach_within: 60, not_reach_within: 10}}
+      - {label: "60 步內到不了", when: {not_reach_within: 60}}
+    explain: "高斯-牛頓的第 1 步經過 f = 3906.25 的點才跳到答案；LM 拒絕任何讓 f 上升的步，只能沿著彎曲的谷慢慢前進，第 51 步才達到。穩健的代價是：會錯過「先上升再到答案」的捷徑。"
 ---
 
 ## 定義

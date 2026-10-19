@@ -10,6 +10,34 @@ lab:
     adagrad: {lr: 0.5}
   n_iter: 150
 practice: adagrad
+predict:
+  - id: p1
+    prompt: "GD 在本題 η > 0.2 就發散。把 AdaGrad 的 η 調到 1.5，150 步內會？"
+    scenario: {params: {adagrad: {lr: 1.5}}, n_iter: 150}
+    subject: adagrad
+    options:
+      - {label: "發散", when: {status: diverged}}
+      - {label: "達到 f − f* < 10⁻¹⁰", when: {reach_within: 150}}
+      - {label: "不發散，但到不了 10⁻¹⁰", when: {not_reach_within: 150, status: [max_iter, converged, stopped]}}
+    explain: "AdaGrad 每個座標的位移是 η·gᵢ/√(Σg²)，絕對值永遠不超過 η，不會像 GD 那樣越跳越遠；而有效步長約以 1/√k 衰減，所以 η 通常要設得比 GD 大很多。η = 1.5 時第 46 步就達到 10⁻¹⁰（η = 0.5 時 150 步後還有 4.1 × 10⁻⁵）。"
+  - id: p2
+    prompt: "把碗旋轉 θ = 45°（η = 0.5），150 步後 AdaGrad 的 f − f* 會？"
+    scenario: {problem_params: {kappa: 10, theta_deg: 45}, n_iter: 150}
+    subject: adagrad
+    show: [gd, adagrad]
+    options:
+      - {label: "和 θ = 0° 時一樣好：< 10⁻³", when: {final_gap_below: 1.0e-3}}
+      - {label: "明顯變差：≥ 10⁻³", when: {final_gap_above: 1.0e-3}}
+    explain: "AdaGrad 的縮放是逐座標的，只有座標軸對齊碗的主軸時才能分開壓陡方向、放大平方向。θ = 45° 時兩個主軸各占兩個座標的一半，兩座標的 Σg² 差不多，縮放等於沒做，只剩衰減的步長：f − f* = 0.26；GD 換了旋轉仍是 3.2 × 10⁻⁷。"
+  - id: p3
+    prompt: "換到 Rosenbrock（η = 0.5），跑 300 步，AdaGrad 會？"
+    scenario: {problem: rosenbrock, n_iter: 300}
+    subject: adagrad
+    options:
+      - {label: "300 步內達到 f − f* < 10⁻¹⁰", when: {reach_within: 300}}
+      - {label: "沒到 10⁻¹⁰，但最後 f − f* < 1", when: {not_reach_within: 300, final_gap_below: 1}}
+      - {label: "幾乎停住：最後 f − f* ≥ 1", when: {not_reach_within: 300, final_gap_above: 1}}
+    explain: "Σg² 只增不減。Rosenbrock 起點附近梯度很大，累積值一下子就很大，等走到彎曲的谷底時有效步長已經小到幾乎不動：300 步後 f 仍是 5.8。RMSProp 改用指數衰減的平均，就是為了修正這一點。"
 ---
 
 ## 定義

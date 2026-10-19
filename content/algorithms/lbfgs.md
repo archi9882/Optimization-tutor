@@ -9,6 +9,37 @@ lab:
     lbfgs: {m: 5}
   n_iter: 60
 practice: lbfgs
+predict:
+  - id: p1
+    prompt: "二次碗（κ = 10），L-BFGS 只記 m = 2 組 (s, y)，何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {params: {lbfgs: {m: 2}}, n_iter: 60}
+    subject: lbfgs
+    show: [bfgs, lbfgs]
+    options:
+      - {label: "12 步內", when: {reach_within: 12}}
+      - {label: "13～60 步", when: {reach_within: 60, not_reach_within: 12}}
+      - {label: "60 步內到不了", when: {not_reach_within: 60}}
+    explain: "2 維問題只有 2 個曲率方向，記住最近 2 組 (s, y) 就差不多夠了：第 10 步達到 10⁻¹⁰（m = 5 是第 8 步，完整 BFGS 第 4 步）。實務上 m 取 5～20，遠小於維度 n，記憶體只要 O(mn)。"
+  - id: p2
+    prompt: "把 m 降到 1（只記上一步），同一個二次碗會？"
+    scenario: {params: {lbfgs: {m: 1}}, n_iter: 60}
+    subject: lbfgs
+    show: [bfgs, lbfgs]
+    options:
+      - {label: "12 步內", when: {reach_within: 12}}
+      - {label: "13～60 步", when: {reach_within: 60, not_reach_within: 12}}
+      - {label: "60 步內到不了", when: {not_reach_within: 60}}
+    explain: "只記 1 組 (s, y) 時，只知道上一步那個方向的曲率，其他方向只能用 γI 頂替，近似的反 Hessian 一直不完整：第 23 步才達到 10⁻¹⁰。"
+  - id: p3
+    prompt: "換到 Rosenbrock，m = 1，跑 300 步，會？"
+    scenario: {problem: rosenbrock, params: {lbfgs: {m: 1}}, n_iter: 300}
+    subject: lbfgs
+    show: [bfgs, lbfgs]
+    options:
+      - {label: "100 步內達到 10⁻¹⁰", when: {reach_within: 100}}
+      - {label: "101～300 步達到", when: {reach_within: 300, not_reach_within: 100}}
+      - {label: "300 步內到不了", when: {not_reach_within: 300}}
+    explain: "Rosenbrock 的谷是彎的，曲率隨位置一直改變；m = 1 學到的曲率很快就過時，300 步後 f − f* 仍有 6.1 × 10⁻¹⁰。m = 3 時第 39 步就達到，和 BFGS 的第 36 步相近：記憶不用多，但不能太少。"
 ---
 
 ## 定義

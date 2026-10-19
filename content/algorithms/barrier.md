@@ -7,6 +7,42 @@ lab:
   compare: [penalty]
   n_iter: 150
 practice: barrier_nl
+predict:
+  - id: p1
+    prompt: "預設（施肥預算，μ 從 1 每輪縮小 10 倍）：障礙法的迭代點會跑出三角形嗎？"
+    scenario: {}
+    show: [barrier_nl, penalty]
+    options:
+      - {label: "每一步都留在三角形內部", when: {stays_feasible: true}}
+      - {label: "有些步會跑出三角形", when: {stays_feasible: false}}
+    explain: "整條路徑都在內部，違反量一直是 0，第 50 步停止時離 x* 只有 2.6 × 10⁻⁷。−μ log(−g) 在邊界上趨於 +∞，回溯線搜尋會把越界的步長縮回來；同圖的懲罰法則從三角形外面逼近。"
+  - id: p2
+    prompt: "把起點設在三角形外的 (3, 2.5)（超出預算）。障礙法會？"
+    scenario: {x0: [3.0, 2.5]}
+    show: [barrier_nl]
+    options:
+      - {label: "照樣收斂到 x*（‖x − x*‖ < 10⁻³）", when: {final_dist_below: 1.0e-3}}
+      - {label: "無法開始：第 1 步就停在起點", when: {stops_within: 1, outer_max: 0, final_dist_above: 1.0e-3}}
+      - {label: "發散", when: {status: diverged}}
+    explain: "立刻停止：log(−g) 在 g ≥ 0 處沒有定義，障礙函數根本算不出來。障礙法需要嚴格可行的起點，實務上要先解一個找可行點的子問題（Phase I）。"
+  - id: p3
+    prompt: "內圈步數上限調到 2：每個 μ 只做 2 步牛頓法就縮小 μ。停止時離 x* 多遠？"
+    scenario: {params: {barrier_nl: {inner: 2}}}
+    show: [barrier_nl]
+    options:
+      - {label: "不到 10⁻⁶", when: {final_dist_below: 1.0e-6}}
+      - {label: "10⁻⁶～10⁻²", when: {final_dist_above: 1.0e-6, final_dist_below: 1.0e-2}}
+      - {label: "10⁻² 以上", when: {final_dist_above: 1.0e-2}}
+    explain: "第 14 步停止，距離 1.6 × 10⁻⁷，和預設一樣準。μ 縮小 10 倍後，上一輪的點仍在新中心點附近，牛頓法在這裡收斂很快，兩步就夠。"
+  - id: p4
+    prompt: "內圈步數上限再調到 1：每個 μ 只做 1 步牛頓法。停止時離 x* 多遠？"
+    scenario: {params: {barrier_nl: {inner: 1}}}
+    show: [barrier_nl]
+    options:
+      - {label: "不到 10⁻⁶", when: {final_dist_below: 1.0e-6}}
+      - {label: "10⁻⁶～10⁻²", when: {final_dist_above: 1.0e-6, final_dist_below: 1.0e-2}}
+      - {label: "10⁻² 以上", when: {final_dist_above: 1.0e-2}}
+    explain: "第 7 步停止，距離 0.204。每輪一步跟不上 μ 縮小的速度：第 4 步已貼到預算線旁（餘裕 3.9 × 10⁻⁴），卻停在 (1.66, 1.34)，離 x* = (1.5, 1.5) 還遠；之後每步只沿邊界挪約 0.01，μ 縮到 10⁻⁶ 就結束。"
 ---
 
 ## 定義

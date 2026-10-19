@@ -8,6 +8,36 @@ lab:
     gd: {lr: 0.002}
   n_iter: 100
 practice: bfgs
+predict:
+  - id: p1
+    prompt: "換到二次碗（κ = 10），BFGS 何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {problem: quadratic, n_iter: 100}
+    subject: bfgs
+    show: [newton, bfgs]
+    options:
+      - {label: "1 步", when: {reach_within: 1}}
+      - {label: "2～10 步", when: {reach_within: 10, not_reach_within: 1}}
+      - {label: "10 步內到不了", when: {not_reach_within: 10}}
+    explain: "BFGS 從 H₀ = I 出發，第一步就是梯度方向；它沒有 Hessian，只能從每一步的位移 s 和梯度差 y 學曲率，所以要幾步才學得像 A⁻¹：第 4 步達到 10⁻¹⁰，牛頓法 1 步。（本頁用 Armijo 回溯線搜尋，不是精確線搜尋；精確線搜尋時 2 維二次函數最多 2 步。）"
+  - id: p2
+    prompt: "Rosenbrock 上，BFGS 的 f(xₖ) 每一步都下降嗎？"
+    scenario: {problem: rosenbrock, n_iter: 100}
+    subject: bfgs
+    show: [newton, bfgs]
+    options:
+      - {label: "每一步都下降", when: {rises_max: 0}}
+      - {label: "有些步 f 會上升", when: {rises_min: 1}}
+    explain: "只在曲率條件 sᵀy > 0 時更新，H 就一直保持正定，−H∇f 必是下降方向；再加上線搜尋要求 f 充分下降（Armijo 條件），每一步 f 都下降。同圖的純牛頓法有 2 步 f 上升。"
+  - id: p3
+    prompt: "換到 Himmelblau，從預設起點 (−0.5, −0.5) 出發（牛頓法在這裡會停在局部最大值），BFGS 會？"
+    scenario: {problem: himmelblau, n_iter: 100}
+    subject: bfgs
+    show: [newton, bfgs]
+    options:
+      - {label: "收斂到一個最小值（f − f* < 10⁻¹⁰）", when: {reach_within: 100}}
+      - {label: "梯度歸零而停止，但 f − f* ≥ 1", when: {status: converged, final_gap_above: 1}}
+      - {label: "發散", when: {status: diverged}}
+    explain: "起點附近真正的 Hessian 負定，牛頓法因此往上爬；BFGS 不用真正的 Hessian，它的 H 始終正定，方向永遠往下坡，第 12 步收斂到最小值 (−2.81, 3.13)。"
 ---
 
 ## 定義

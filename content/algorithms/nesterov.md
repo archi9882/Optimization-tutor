@@ -12,6 +12,36 @@ lab:
   n_iter: 150
   reach_tol: 1.0e-8   # widget reports "f − f* < 1e-8 於第 k 步", as quoted below
 practice: nesterov
+predict:
+  - id: p1
+    prompt: "β = 0.8、η = 0.02 時，Nesterov 的 f(xₖ) 每一步都下降嗎？"
+    scenario: {params: {momentum: {beta: 0.8}, nesterov: {beta: 0.8}}, n_iter: 150}
+    subject: nesterov
+    show: [momentum, nesterov]
+    options:
+      - {label: "每一步都下降", when: {rises_max: 0}}
+      - {label: "有些步 f 會上升", when: {rises_min: 1}}
+    explain: "「先看一步」能減少衝過頭，但不能消除：150 步中 Nesterov 仍有 28 步 f 上升，動量法是 68 步。Nesterov 的加速保證是誤差上界整體縮小得快，不是每步單調下降。"
+  - id: p2
+    prompt: "兩者的 β 都調到 0.95（慣性更大），η = 0.02，跑 400 步。Nesterov 何時達到 f − f* < 10⁻⁸？"
+    scenario: {params: {momentum: {beta: 0.95}, nesterov: {beta: 0.95}}, n_iter: 400}
+    subject: nesterov
+    show: [momentum, nesterov]
+    options:
+      - {label: "250 步內", when: {reach_within: 250}}
+      - {label: "251～400 步", when: {reach_within: 400, not_reach_within: 250}}
+      - {label: "400 步內到不了", when: {not_reach_within: 400}}
+    explain: "β 越大慣性越強，動量法繞著最小值轉很多圈，第 368 步才達到 10⁻⁸；Nesterov 在「慣性會帶你去的地方」量梯度，提早煞車，第 215 步就達到。慣性越大，先看一步越有價值。"
+  - id: p3
+    prompt: "β = 0.8、η = 0.03 時，動量法第 97 步就達到 10⁻⁸。同樣的 η、β，Nesterov 會？"
+    scenario: {params: {momentum: {lr: 0.03, beta: 0.8}, nesterov: {lr: 0.03, beta: 0.8}}, n_iter: 150}
+    subject: nesterov
+    show: [momentum, nesterov]
+    options:
+      - {label: "150 步內達到 f − f* < 10⁻⁸", when: {reach_within: 150}}
+      - {label: "不發散，但 150 步內到不了", when: {not_reach_within: 150, status: [max_iter, converged, stopped]}}
+      - {label: "發散", when: {status: diverged}}
+    explain: "在二次函數上，Nesterov 穩定需要 ηL < 2(1 + β)/(1 + 2β)，L = 50、β = 0.8 時是 η < 0.0277；動量法的界線是 η < 2(1 + β)/L = 0.072。先看一步讓陡方向多被修正一次，代價是可用的步長變小：η = 0.027 不發散，0.03 就發散。"
 ---
 
 ## 定義

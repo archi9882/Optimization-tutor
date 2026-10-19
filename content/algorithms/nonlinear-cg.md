@@ -10,6 +10,26 @@ lab:
     momentum: {lr: 0.02, beta: 0.8}
   n_iter: 100
 practice: ncg
+predict:
+  - id: p1
+    prompt: "把碗調得更扁、轉得更多（κ = 200、θ = 60°），非線性 CG 何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {problem_params: {kappa: 200, theta_deg: 60}, n_iter: 100}
+    subject: ncg
+    options:
+      - {label: "2 步內", when: {reach_within: 2}}
+      - {label: "3～100 步", when: {reach_within: 100, not_reach_within: 2}}
+      - {label: "100 步內到不了", when: {not_reach_within: 100}}
+    explain: "在 n 維二次函數上，配合精確線搜尋的 CG 最多 n 步到達最小值：每個新方向都和之前的方向對 A 共軛，走過的方向不會再被破壞，和 κ、旋轉無關。本頁的割線線搜尋在二次函數上恰好是精確的，n = 2，所以 2 步。"
+  - id: p2
+    prompt: "換到 Rosenbrock（2 維但不是二次函數），非線性 CG 何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {problem: rosenbrock, n_iter: 100}
+    subject: ncg
+    show: [ncg, bfgs]
+    options:
+      - {label: "2 步內", when: {reach_within: 2}}
+      - {label: "3～100 步", when: {reach_within: 100, not_reach_within: 2}}
+      - {label: "100 步內到不了", when: {not_reach_within: 100}}
+    explain: "「n 步到達」只對二次函數成立。Rosenbrock 的曲率隨位置改變，前面方向的共軛性很快失效，非線性 CG 第 39 步才達到 10⁻¹⁰，和 BFGS 的第 36 步相近；它的好處是只存幾個向量，記憶體 O(n)。"
 ---
 
 ## 定義

@@ -12,7 +12,17 @@ lab:
   n_iter: 150
 practice: momentum
 predict:
-  - prompt: "GD 在 η > 2/L = 0.04 時發散。Momentum（β = 0.8）把 η 提高到 0.07，會？"
+  - id: p2
+    prompt: "β = 0.8、η = 0.02（本頁預設）時，Momentum 的 f(xₖ) 每一步都下降嗎？"
+    scenario: {params: {momentum: {lr: 0.02, beta: 0.8}}, n_iter: 150}
+    subject: momentum
+    show: [gd, momentum]
+    options:
+      - {label: "每一步都下降", when: {rises_max: 0}}
+      - {label: "有些步 f 會上升", when: {rises_min: 1}}
+    explain: "動量帶著過去的速度前進，衝過谷底後會爬上對面的坡，所以 f 不是單調下降（收斂曲線呈鋸齒）；換來的是整體快得多的收斂，對照同圖的 GD。"
+  - id: p1
+    prompt: "GD 在 η > 2/L = 0.04 時發散。Momentum（β = 0.8）把 η 提高到 0.07，會？"
     scenario: {params: {momentum: {lr: 0.07, beta: 0.8}}, n_iter: 150}
     subject: momentum
     show: [momentum]
@@ -21,15 +31,8 @@ predict:
       - {label: "收斂：150 步內 f − f* < 10⁻¹⁰", when: {reach_within: 150}}
       - {label: "不發散，但 150 步內還沒收斂", when: {not_reach_within: 150, status: [max_iter, converged, stopped]}}
     explain: "重球法在二次函數上穩定的條件是 0 < ηL < 2(1 + β)，也就是 η < 2 × 1.8 / 50 = 0.072。動量把可用步長的上限放寬成 GD 的 1 + β 倍；0.07 在界線內，0.075 就會發散。"
-  - prompt: "β = 0.8、η = 0.02（本頁預設）時，Momentum 的 f(xₖ) 每一步都下降嗎？"
-    scenario: {params: {momentum: {lr: 0.02, beta: 0.8}}, n_iter: 150}
-    subject: momentum
-    show: [gd, momentum]
-    options:
-      - {label: "每一步都下降", when: {rises_max: 0}}
-      - {label: "有些步 f 會上升", when: {rises_min: 1}}
-    explain: "動量帶著過去的速度前進，衝過谷底後會爬上對面的坡，所以 f 不是單調下降（收斂曲線呈鋸齒）；換來的是整體快得多的收斂，對照同圖的 GD。"
-  - prompt: "η = 0.02 不變，把 β 從 0.8 提高到 0.95，150 步內會？"
+  - id: p3
+    prompt: "η = 0.02 不變，把 β 從 0.8 提高到 0.95，150 步內會？"
     scenario: {params: {momentum: {lr: 0.02, beta: 0.95}}, n_iter: 150}
     subject: momentum
     show: [momentum]

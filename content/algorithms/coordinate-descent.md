@@ -10,6 +10,34 @@ lab:
     coordinate: {omega: 1.0}
   n_iter: 150
 practice: coordinate
+predict:
+  - id: p1
+    prompt: "把旋轉 θ 調到 0°（κ = 10、ω = 1），座標下降何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {problem_params: {kappa: 10, theta_deg: 0}, n_iter: 150}
+    subject: coordinate
+    options:
+      - {label: "2 步內", when: {reach_within: 2}}
+      - {label: "3～150 步", when: {reach_within: 150, not_reach_within: 2}}
+      - {label: "150 步內到不了", when: {not_reach_within: 150}}
+    explain: "θ = 0° 時 Hessian 是對角的，兩個變數互不耦合：沿 x 的一維精確最小化一步就把 x 放到最優值，y 也一樣，所以 2 步就精確到達最小值，κ 再大也一樣。拖慢座標下降的是變數之間的耦合。"
+  - id: p2
+    prompt: "θ = 30°、ω = 1 時第 51 步達到 10⁻¹⁰。把 ω 調到 1.5（每次故意多走 50%），會？"
+    scenario: {params: {coordinate: {omega: 1.5}}, n_iter: 150}
+    subject: coordinate
+    options:
+      - {label: "50 步內達到", when: {reach_within: 50}}
+      - {label: "51～150 步", when: {reach_within: 150, not_reach_within: 50}}
+      - {label: "150 步內到不了", when: {not_reach_within: 150}}
+    explain: "這是逐次過鬆弛（SOR）。對正定二次函數，0 < ω < 2 都收斂，而且 ω = 1 通常不是最快的：最優 ω 介於 1 和 2 之間，適度走過頭反而抵銷了變數耦合造成的拖累，第 41 步就達到。"
+  - id: p3
+    prompt: "再把 ω 調到 1.95，會？"
+    scenario: {params: {coordinate: {omega: 1.95}}, n_iter: 150}
+    subject: coordinate
+    options:
+      - {label: "50 步內達到", when: {reach_within: 50}}
+      - {label: "51～150 步", when: {reach_within: 150, not_reach_within: 50}}
+      - {label: "150 步內到不了", when: {not_reach_within: 150}}
+    explain: "SOR 每輪（x、y 各更新一次）的誤差縮小倍數至少是 |ω − 1| = 0.95：每次都衝過頭將近一倍，誤差幾乎不縮小，150 步後 f − f* 仍有 3.8 × 10⁻²。過鬆弛有最優值，不是越大越好；ω ≥ 2 就不再收斂。"
 ---
 
 ## 定義

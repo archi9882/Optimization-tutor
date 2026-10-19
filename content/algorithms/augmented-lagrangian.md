@@ -7,6 +7,43 @@ lab:
   compare: [penalty]
   n_iter: 400
 practice: augmented_lagrangian
+predict:
+  - id: p1
+    prompt: "預設（施肥預算，ρ = 10 固定，不放大）：增廣 Lagrangian 停止時離 x* 多遠？（懲罰法要把 ρ 放大到 10⁴，還停在 0.0050）"
+    scenario: {}
+    show: [augmented_lagrangian, penalty]
+    options:
+      - {label: "不到 10⁻⁶", when: {final_dist_below: 1.0e-6}}
+      - {label: "10⁻⁶～10⁻²，和懲罰法差不多", when: {final_dist_above: 1.0e-6, final_dist_below: 1.0e-2}}
+      - {label: "10⁻² 以上", when: {final_dist_above: 1.0e-2}}
+    explain: "第 209 步停止，距離 2.3 × 10⁻⁷、違反量 9.9 × 10⁻⁸。乘數 λ 每輪更新後往 λ* = 3 收斂，等於替懲罰項補上「該推多少」的資訊，所以不需要 ρ → ∞；子問題維持溫和的條件數。"
+  - id: p2
+    prompt: "把 ρ 從 10 提高到 100。會比 ρ = 10 的第 209 步更早停止嗎？"
+    scenario: {params: {augmented_lagrangian: {rho: 100.0}}}
+    show: [augmented_lagrangian]
+    options:
+      - {label: "更早：208 步內停止", when: {stops_within: 208}}
+      - {label: "更晚：209～400 步才停止", when: {stops_within: 400, not_stops_within: 208}}
+      - {label: "400 步內停不下來", when: {not_stops_within: 400}}
+    explain: "第 367 步才停止，比 ρ = 10 晚：乘數更新只要 5 次（ρ = 10 時 8 次），但 ρ 大，增廣 Lagrangian 的等高線更扁，每輪 GD 內迴圈要走更多步。ρ 越大不一定越快。"
+  - id: p3
+    prompt: "再把 ρ 提高到 1000。400 步時離 x* 多遠？"
+    scenario: {params: {augmented_lagrangian: {rho: 1000.0}}}
+    show: [augmented_lagrangian]
+    options:
+      - {label: "不到 10⁻⁶", when: {final_dist_below: 1.0e-6}}
+      - {label: "10⁻⁶～10⁻²", when: {final_dist_above: 1.0e-6, final_dist_below: 1.0e-2}}
+      - {label: "10⁻² 以上", when: {final_dist_above: 1.0e-2}}
+    explain: "400 步時還沒停止，距離 0.0595，只完成 3 次乘數更新。ρ = 1000 的子問題和懲罰法的大 ρ 一樣病態，GD 內迴圈每輪都用完 100 步的上限；增廣 Lagrangian 的好處正是用適中的 ρ 就能收斂。"
+  - id: p4
+    prompt: "回到 ρ = 10，把內圈步數上限從 100 降到 5：每輪 GD 最多 5 步就強制更新乘數，迭代數 500。會怎樣？"
+    scenario: {params: {augmented_lagrangian: {rho: 10.0, inner: 5}}, n_iter: 500}
+    show: [augmented_lagrangian]
+    options:
+      - {label: "比預設更早：208 步內停止", when: {stops_within: 208}}
+      - {label: "比預設更晚：209～500 步才停止", when: {stops_within: 500, not_stops_within: 208}}
+      - {label: "500 步內停不下來", when: {not_stops_within: 500}}
+    explain: "第 73 步就停止（13 次乘數更新），距離 1.9 × 10⁻⁷，比預設的 209 步還快。乘數更新不必等子問題解得很準；子問題粗略地解、乘數早點更新，常常更省步數。"
 ---
 
 ## 定義

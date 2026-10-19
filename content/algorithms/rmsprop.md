@@ -10,6 +10,33 @@ lab:
     rmsprop: {lr: 0.05, rho: 0.99}
   n_iter: 150
 practice: rmsprop
+predict:
+  - id: p1
+    prompt: "把 RMSProp 的 ρ 調到 0.8（記憶變短），η = 0.05。f(xₖ) 每一步都下降嗎？"
+    scenario: {params: {rmsprop: {rho: 0.8}}, n_iter: 150}
+    subject: rmsprop
+    options:
+      - {label: "每一步都下降", when: {rises_max: 0}}
+      - {label: "有些步 f 會上升", when: {rises_min: 1}}
+    explain: "ρ = 0.8 時 v 只記得最近約 1/(1 − ρ) = 5 步的梯度平方。靠近谷底梯度變小，v 很快跟著變小，η/√v 反而變大，於是衝過頭、f 上升（150 步中有 21 步）。"
+  - id: p2
+    prompt: "ρ = 0.99、η = 0.05，跑 500 步。RMSProp 何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {params: {rmsprop: {rho: 0.99}}, n_iter: 500}
+    subject: rmsprop
+    options:
+      - {label: "150 步內", when: {reach_within: 150}}
+      - {label: "151～500 步", when: {reach_within: 500, not_reach_within: 150}}
+      - {label: "500 步內到不了", when: {not_reach_within: 500}}
+    explain: "ρ = 0.99 的 v 記得約 100 步，早期的大梯度讓 v 縮得比梯度慢，有效步長隨著接近最小值一起變小，所以一路收斂：150 步時 f − f* 是 1.9 × 10⁻⁷，第 192 步達到 10⁻¹⁰。"
+  - id: p3
+    prompt: "改成 ρ = 0.9（η = 0.05），同樣跑 500 步，會？"
+    scenario: {params: {rmsprop: {rho: 0.9}}, n_iter: 500}
+    subject: rmsprop
+    options:
+      - {label: "150 步內", when: {reach_within: 150}}
+      - {label: "151～500 步", when: {reach_within: 500, not_reach_within: 150}}
+      - {label: "500 步內到不了", when: {not_reach_within: 500}}
+    explain: "ρ = 0.9 時 v 只記約 10 步，梯度一變小 v 也跟著變小，比值 g/√v 一直維持在 1 左右，每步仍走約 η 的距離，在最小值附近來回跳：500 步後 f − f* 仍是 3.4 × 10⁻³。固定 η 的 RMSProp 不保證收斂，實務上要搭配學習率衰減。"
 ---
 
 ## 定義

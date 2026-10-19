@@ -9,6 +9,33 @@ lab:
   n_iter: 150
   reach_tol: 1.0e-8   # widget reports "f − f* < 1e-8 於第 k 步", as quoted below
 practice: nelder_mead
+predict:
+  - id: p1
+    prompt: "預設 Rosenbrock：Nelder-Mead 第 126 步停止（三角形縮到 10⁻⁸ 以下）。整次執行一共算了幾次 f？"
+    scenario: {}
+    show: [nelder_mead, bfgs]
+    options:
+      - {label: "不到 150 次", when: {evals_below: 150}}
+      - {label: "150～399 次", when: {evals_above: 150, evals_below: 400}}
+      - {label: "400 次以上", when: {evals_above: 400}}
+    explain: "245 次，平均每步不到 2 次：起始三角形 3 次，之後每步先試反射點，126 步中有 116 步再試一個擴張或收縮點，要 n + 1 次的縮小步一次也沒發生。同圖的 BFGS 39 步就停，但每步都用梯度；比較無導數方法和梯度法要比函數計算次數，不是比步數。"
+  - id: p2
+    prompt: "把初始單純形邊長從 0.5 縮小 10 倍到 0.05。達到 f − f* < 10⁻⁸ 要多少步？（邊長 0.5 時是第 91 步）"
+    scenario: {params: {nelder_mead: {size: 0.05}}}
+    options:
+      - {label: "120 步內", when: {reach_within: 120}}
+      - {label: "121～150 步", when: {reach_within: 150, not_reach_within: 120}}
+      - {label: "150 步內達不到", when: {not_reach_within: 150}}
+    explain: "第 94 步就達到，只比 0.5 時多 3 步。小三角形一開始連續擴張，每次擴張把邊長放大一倍，幾步就長到適合地形的大小；初始大小對 Nelder-Mead 影響不大。"
+  - id: p3
+    prompt: "換到二次碗、κ = 100，把旋轉 θ 調到 45°（谷斜著擺）。Nelder-Mead 停止前要算幾次 f？（θ = 0° 時是 144 次）"
+    scenario: {problem: quadratic, problem_params: {kappa: 100, theta_deg: 45}}
+    show: [nelder_mead, pattern_search]
+    options:
+      - {label: "不到 200 次，和 0° 差不多", when: {evals_below: 200}}
+      - {label: "200～999 次", when: {evals_above: 200, evals_below: 1000}}
+      - {label: "1000 次以上", when: {evals_above: 1000}}
+    explain: "153 次，幾乎不受谷的方向影響：單純形只看頂點的函數值，會自己拉長、轉到谷的方向。同圖的模式搜尋只沿座標軸試探，150 步內還到不了 10⁻⁸。"
 ---
 
 ## 定義

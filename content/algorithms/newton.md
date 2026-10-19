@@ -9,6 +9,34 @@ lab:
     newton: {alpha: 1.0}
   n_iter: 100
 practice: newton
+predict:
+  - id: p1
+    prompt: "換到很扁又旋轉過的二次碗（κ = 200、θ = 60°），牛頓法何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {problem: quadratic, problem_params: {kappa: 200, theta_deg: 60}, n_iter: 100}
+    subject: newton
+    options:
+      - {label: "1 步", when: {reach_within: 1}}
+      - {label: "2～10 步", when: {reach_within: 10, not_reach_within: 1}}
+      - {label: "10 步內到不了", when: {not_reach_within: 10}}
+    explain: "二次函數的二階 Taylor 展開就是它自己，牛頓步 −H⁻¹∇f 直接跳到模型的最小值，也就是真正的最小值。κ 和旋轉都被 H⁻¹ 抵銷：碗再扁、轉幾度，都是 1 步。"
+  - id: p2
+    prompt: "把步長 α 調到 0.5（阻尼牛頓），Rosenbrock 上何時達到 f − f* < 10⁻¹⁰？"
+    scenario: {problem: rosenbrock, params: {newton: {alpha: 0.5}}, n_iter: 100}
+    subject: newton
+    options:
+      - {label: "10 步內", when: {reach_within: 10}}
+      - {label: "11～100 步", when: {reach_within: 100, not_reach_within: 10}}
+      - {label: "100 步內到不了", when: {not_reach_within: 100}}
+    explain: "靠近最小值時牛頓步幾乎正好指到答案，α = 0.5 只走一半，誤差每步只減半（線性收斂），第 54 步才達到；α = 1 時誤差每步大約平方（二次收斂），第 6 步就到。固定阻尼換來穩定，代價是失去二次收斂。"
+  - id: p3
+    prompt: "換到 Himmelblau，從預設起點 (−0.5, −0.5) 出發，牛頓法會？"
+    scenario: {problem: himmelblau, n_iter: 100}
+    subject: newton
+    options:
+      - {label: "收斂到一個最小值（f − f* < 10⁻¹⁰）", when: {reach_within: 100}}
+      - {label: "梯度歸零而停止，但 f − f* ≥ 1", when: {status: converged, final_gap_above: 1}}
+      - {label: "發散", when: {status: diverged}}
+    explain: "牛頓法解的是 ∇f = 0，分不出最小值、最大值和鞍點。起點附近 Hessian 負定，牛頓步一路往上爬（4 步 f 上升），第 5 步停在局部最大值 (−0.27, −0.92)，f = 182。要保證往下走，得讓矩陣保持正定（BFGS、LM）或限制步長並檢查下降（信賴域）。"
 ---
 
 ## 定義

@@ -10,6 +10,34 @@ lab:
     adam: {lr: 0.1}
   n_iter: 150
 practice: adam
+predict:
+  - id: p1
+    prompt: "把碗旋轉 θ = 45°（Adam η = 0.1），150 步後 Adam 的 f − f* 會？"
+    scenario: {problem_params: {kappa: 10, theta_deg: 45}, n_iter: 150}
+    subject: adam
+    show: [gd, adam]
+    options:
+      - {label: "和 θ = 0° 時一樣好：< 10⁻³", when: {final_gap_below: 1.0e-3}}
+      - {label: "明顯變差：≥ 10⁻³", when: {final_gap_above: 1.0e-3}}
+    explain: "Adam 的 √v 是逐座標的，只有座標軸對齊碗的主軸時，才能分開處理陡與平的方向。θ = 45° 時縮放失效，f − f* = 0.18；GD 是 3.2 × 10⁻⁷，旋轉不影響它的收斂速率。Adam 不具旋轉不變性。"
+  - id: p2
+    prompt: "θ = 0°，Adam 的 η 降到 0.01，跑 300 步。最後 f − f* 會？"
+    scenario: {params: {adam: {lr: 0.01}}, n_iter: 300}
+    subject: adam
+    options:
+      - {label: "< 10⁻²", when: {final_gap_below: 1.0e-2}}
+      - {label: "介於 10⁻² 與 1 之間", when: {final_gap_above: 1.0e-2, final_gap_below: 1}}
+      - {label: "≥ 1", when: {final_gap_above: 1}}
+    explain: "Adam 的更新 η·m̂/√v̂ 在梯度方向穩定時，每個座標約走 η，和梯度大小無關。起點 (−4.5, 2) 離最小值約 4.9，每步實測最多只走 0.014（√2 × 0.01），300 步後停在 (−1.99, 0.18)，f = 2.1。Adam 的 η 是「每步走多遠」的尺度，不是梯度的倍率。"
+  - id: p3
+    prompt: "換到 Himmelblau（η = 0.1）。Adam 150 步內能達到 f − f* < 10⁻¹⁰ 嗎？"
+    scenario: {problem: himmelblau, n_iter: 150}
+    subject: adam
+    show: [adam, rmsprop]
+    options:
+      - {label: "能", when: {reach_within: 150}}
+      - {label: "不能", when: {not_reach_within: 150}}
+    explain: "Adam 的動量讓它在最小值附近來回繞（150 步中有 48 步 f 上升），150 步後 f = 8.1 × 10⁻⁵。同圖不帶動量的 RMSProp（η = 0.05、ρ = 0.99）第 43 步就達到 10⁻¹⁰：在小而光滑的問題上，Adam 不一定最快。"
 ---
 
 ## 定義

@@ -8,21 +8,24 @@ lab:
   n_iter: 150
 practice: gd
 predict:
-  - prompt: "η = 0.19（略小於 2/L = 0.2）時，梯度下降在 κ = 10 的二次碗上會？"
+  - id: p1
+    prompt: "η = 0.19（略小於 2/L = 0.2）時，梯度下降在 κ = 10 的二次碗上會？"
     scenario: {problem: quadratic, problem_params: {kappa: 10}, params: {gd: {lr: 0.19}}, n_iter: 150}
     options:
       - {label: "平穩收斂，路徑幾乎不折返", when: {reach_within: 150, zigzag_max: 2}}
       - {label: "來回震盪，但仍收斂", when: {reach_within: 150, zigzag_min: 3}}
       - {label: "發散", when: {status: diverged}}
     explain: "陡方向的誤差每步乘上 1 − ηL = 1 − 0.19 × 10 = −0.9：每步翻面、幅度只縮一成，所以在谷壁之間來回跳；但 0.9 < 1，誤差終究會縮到零，仍會收斂。"
-  - prompt: "η = 0.21（剛好超過 2/L = 0.2）時，梯度下降會？"
+  - id: p2
+    prompt: "η = 0.21（剛好超過 2/L = 0.2）時，梯度下降會？"
     scenario: {problem: quadratic, problem_params: {kappa: 10}, params: {gd: {lr: 0.21}}, n_iter: 150}
     options:
       - {label: "平穩收斂，路徑幾乎不折返", when: {reach_within: 150, zigzag_max: 2}}
       - {label: "來回震盪，但仍收斂", when: {reach_within: 150, zigzag_min: 3}}
       - {label: "發散", when: {status: diverged}}
     explain: "1 − ηL = 1 − 2.1 = −1.1，大小 1.1 超過 1：陡方向的誤差每步翻面並放大一成，越跳越遠。2/L 是硬界線，只超過一點點也會發散，只是發散得慢。"
-  - prompt: "κ 從 10 換成 100，η 取 0.019（接近此時的最優固定步長 2/(μ + L) ≈ 0.0198）。150 步內 f − f* 能降到 10⁻¹⁰ 以下嗎？"
+  - id: p3
+    prompt: "κ 從 10 換成 100，η 取 0.019（接近此時的最優固定步長 2/(μ + L) ≈ 0.0198）。150 步內 f − f* 能降到 10⁻¹⁰ 以下嗎？"
     scenario: {problem: quadratic, problem_params: {kappa: 100}, params: {gd: {lr: 0.019}}, n_iter: 150}
     options:
       - {label: "能，50 步內", when: {reach_within: 50}}

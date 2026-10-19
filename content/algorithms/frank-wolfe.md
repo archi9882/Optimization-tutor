@@ -7,6 +7,42 @@ lab:
   compare: [projected_gradient]
   n_iter: 300
 practice: frank_wolfe
+predict:
+  - id: p1
+    prompt: "預設（施肥預算）：Frank-Wolfe 的迭代點會跑出三角形嗎？"
+    scenario: {}
+    show: [frank_wolfe]
+    options:
+      - {label: "每一步都留在三角形內", when: {stays_feasible: true}}
+      - {label: "有些步會跑出三角形", when: {stays_feasible: false}}
+    explain: "不會：x₊ = x + γ(s − x) 是 x 和頂點 s 的凸組合，0 ≤ γ ≤ 1，兩點都在凸集內，新點也一定在內。Frank-Wolfe 不需要投影，只需要在集合上解線性子問題。"
+  - id: p2
+    prompt: "300 步中，路徑有幾次折返（轉向超過 90°）？"
+    scenario: {}
+    show: [frank_wolfe]
+    options:
+      - {label: "10 次以下", when: {zigzag_max: 10}}
+      - {label: "11～150 次", when: {zigzag_min: 11, zigzag_max: 150}}
+      - {label: "151 次以上", when: {zigzag_min: 151}}
+    explain: "299 次，幾乎每步都折返。x* = (1.5, 1.5) 在預算線的中間、不是頂點，線性子問題卻只會回傳頂點：它輪流選 (3, 0) 和 (0, 3)，迭代點就沿預算線來回拉扯。"
+  - id: p3
+    prompt: "100 步時離 x* 0.021。把迭代數加到 300（3 倍），最後離 x* 多遠？"
+    scenario: {}
+    show: [frank_wolfe, projected_gradient]
+    options:
+      - {label: "降到 0.0025 以下（比 1/k 快）", when: {final_dist_below: 0.0025}}
+      - {label: "0.0025～0.014（約按 1/k 縮小）", when: {final_dist_above: 0.0025, final_dist_below: 0.014}}
+      - {label: "0.014 以上（幾乎沒進步）", when: {final_dist_above: 0.014}}
+    explain: "0.0070，剛好約 1/3：步數 3 倍、距離縮成 1/3，是 O(1/k) 的速度。每步朝頂點走 γₖ = 2/(k + 2) 的比例，來回拉扯的幅度只按 1/k 縮小；同圖的投影梯度第 53 步就停止，距離 1.2 × 10⁻¹²。"
+  - id: p4
+    prompt: "換成「土壤養分圓盤」，同樣 300 步。最後離 x* 多遠？（三角形上是 0.0070）"
+    scenario: {problem: fert_disk}
+    show: [frank_wolfe]
+    options:
+      - {label: "10⁻⁴ 以下", when: {final_dist_below: 1.0e-4}}
+      - {label: "10⁻⁴～10⁻²，和三角形差不多", when: {final_dist_above: 1.0e-4, final_dist_below: 1.0e-2}}
+      - {label: "10⁻² 以上", when: {final_dist_above: 1.0e-2}}
+    explain: "5.7 × 10⁻⁶，比三角形近上千倍，300 步只折返 3 次。圓盤的邊界是彎的，線性子問題的答案隨梯度連續移動，接近 x* 時 s 也接近 x*，不會在兩個頂點之間拉扯。"
 ---
 
 ## 定義

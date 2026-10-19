@@ -7,6 +7,43 @@ lab:
   compare: [frank_wolfe]
   n_iter: 200
 practice: projected_gradient
+predict:
+  - id: p1
+    prompt: "把起點設在圓盤外的 (3, 3)（η = 0.1）。投影梯度會？"
+    scenario: {x0: [3.0, 3.0]}
+    show: [projected_gradient]
+    options:
+      - {label: "無法開始：起點不可行，第 1 步就停止", when: {stops_within: 1, final_dist_above: 1.0e-6}}
+      - {label: "第一步被拉回圓盤，之後收斂到 x*", when: {final_dist_below: 1.0e-6}}
+      - {label: "發散", when: {status: diverged}}
+    explain: "第一步就被投影回圓周，第 32 步停止，距離 3.5 × 10⁻¹³。投影梯度每步都把點投影回可行集，所以起點可以不可行；這點和需要嚴格可行起點的障礙法不同。"
+  - id: p2
+    prompt: "圓盤上把 η 調到 0.5，超過 GD 的穩定上限 2/L = 2/6 ≈ 0.33。投影梯度會？"
+    scenario: {params: {projected_gradient: {lr: 0.5}}}
+    show: [projected_gradient]
+    options:
+      - {label: "收斂：200 步內停止，且 ‖x − x*‖ < 10⁻⁶", when: {stops_within: 200, final_dist_below: 1.0e-6}}
+      - {label: "不收斂：200 步內停不下來", when: {not_stops_within: 200}}
+      - {label: "發散", when: {status: diverged}}
+    explain: "仍收斂，第 35 步停止，每一步都折返。在 x* 附近，沿圓周的誤差每步乘上 (1 − η·τᵀ∇²fτ)/(1 + 2ηλ*) ≈ (1 − 0.5 × 4.32)/(1 + 0.5 × 2 × 1.63) ≈ −0.44：投影回彎曲的圓周時，乘數 λ* 那一項把切線方向的誤差也縮小了。"
+  - id: p3
+    prompt: "換成「施肥預算（三角形）」，η = 0.35。投影梯度會？"
+    scenario: {problem: fert_budget, params: {projected_gradient: {lr: 0.35}}}
+    show: [projected_gradient]
+    options:
+      - {label: "收斂：200 步內停止，且 ‖x − x*‖ < 10⁻⁶", when: {stops_within: 200, final_dist_below: 1.0e-6}}
+      - {label: "不收斂：200 步內停不下來", when: {not_stops_within: 200}}
+      - {label: "發散", when: {status: diverged}}
+    explain: "收斂，第 33 步停止。x* 在預算線 x₁ + x₂ = 3 上；貼著這條線時，投影只是去掉法向分量，等於在線上做 GD。沿線方向 d = (1, −1)/√2 的曲率 dᵀ∇²f d = (2 + 6)/2 = 4，誤差每步乘上 1 − 0.35 × 4 = −0.4：翻面但縮小。"
+  - id: p4
+    prompt: "同一個三角形，把 η 再調到 0.5。投影梯度會？"
+    scenario: {problem: fert_budget, params: {projected_gradient: {lr: 0.5}}}
+    show: [projected_gradient]
+    options:
+      - {label: "收斂：200 步內停止，且 ‖x − x*‖ < 10⁻⁶", when: {stops_within: 200, final_dist_below: 1.0e-6}}
+      - {label: "不收斂：200 步內停不下來", when: {not_stops_within: 200}}
+      - {label: "發散", when: {status: diverged}}
+    explain: "不收斂：誤差每步乘上 1 − 0.5 × 4 = −1，大小不變只翻面，迭代點在預算線上的 (0.5, 2.5) 與 (2.5, 0.5) 之間來回跳，距離一直是 1.41。投影只把點留在可行集內，不能取代合適的步長；圓盤上同樣的 η 能收斂，是因為彎曲的邊界多了縮小的效果。"
 ---
 
 ## 定義

@@ -10,6 +10,33 @@ lab:
   n_iter: 150
   reach_tol: 1.0e-8   # widget reports "f − f* < 1e-8 於第 k 步", as quoted below
 practice: pattern_search
+predict:
+  - id: p1
+    prompt: "預設（κ = 10、旋轉 30°、h₀ = 0.5）：模式搜尋要多少步才達到 f − f* < 10⁻⁸？"
+    scenario: {}
+    show: [pattern_search, nelder_mead]
+    options:
+      - {label: "50 步內", when: {reach_within: 50}}
+      - {label: "51～150 步", when: {reach_within: 150, not_reach_within: 50}}
+      - {label: "150 步內達不到", when: {not_reach_within: 150}}
+    explain: "第 59 步達到（163 次 f 計算）。谷是斜的，羅盤的四個方向都不順著谷，只能用越來越小的步沿座標軸走階梯；同圖的 Nelder-Mead 第 41 步就達到。"
+  - id: p2
+    prompt: "把 κ 調到 100、旋轉 45°（更窄、更斜的谷），迭代數 500。模式搜尋什麼時候達到 f − f* < 10⁻⁸？"
+    scenario: {problem_params: {kappa: 100, theta_deg: 45}, n_iter: 500}
+    show: [pattern_search, nelder_mead]
+    options:
+      - {label: "100 步內", when: {reach_within: 100}}
+      - {label: "101～500 步", when: {reach_within: 500, not_reach_within: 100}}
+      - {label: "500 步內達不到", when: {not_reach_within: 500}}
+    explain: "500 步內達不到：谷斜 45°、又窄 100 倍時，沿座標軸走一步就撞上谷壁，只有很小的步長能成功，h 一再減半。Nelder-Mead 在同一個谷第 44 步就達到，停止時只用了 153 次 f 計算；方向固定的方法對座標系很敏感。"
+  - id: p3
+    prompt: "回到預設的谷，把初始步長 h₀ 從 0.5 縮小到 0.01，迭代數 500。什麼時候達到 f − f* < 10⁻⁸？"
+    scenario: {params: {pattern_search: {step0: 0.01}}, n_iter: 500}
+    options:
+      - {label: "150 步內", when: {reach_within: 150}}
+      - {label: "151～500 步", when: {reach_within: 500, not_reach_within: 150}}
+      - {label: "500 步內達不到", when: {not_reach_within: 500}}
+    explain: "500 步內達不到（程式實測要 1149 步）。本站的模式搜尋只會縮小步長、不會放大，每步最多沿座標軸走 0.01；起點 (−4.5, 2) 沿座標軸到最小值 (0, 0) 至少要走 4.5 + 2 = 6.5，也就是 650 步以上。"
 ---
 
 ## 定義

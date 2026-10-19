@@ -7,6 +7,42 @@ lab:
   compare: [augmented_lagrangian]
   n_iter: 400
 practice: penalty
+predict:
+  - id: p1
+    prompt: "預設（施肥預算，ρ 從 1 放大到 10⁴）：懲罰法停止時，最後一點的違反量（超出預算多少）大約是？"
+    scenario: {}
+    show: [penalty]
+    options:
+      - {label: "幾乎是 0：剛好落在預算線上", when: {final_violation_below: 1.0e-6}}
+      - {label: "10⁻⁶～10⁻³：還在三角形外一點點", when: {final_violation_above: 1.0e-6, final_violation_below: 1.0e-3}}
+      - {label: "10⁻³ 以上", when: {final_violation_above: 1.0e-3}}
+    explain: "違反量 2.97 × 10⁻⁴。懲罰函數的最小點滿足 ∇f + ρ·v·∇g = 0，所以 ρ·v 近似乘數 λ* = 3，違反量 v ≈ λ*/ρ = 3/10⁴：懲罰法的誤差是 O(1/ρ)，只有 ρ → ∞ 才真正可行，迭代點一直從外面逼近。"
+  - id: p2
+    prompt: "同一個預設：停止時離 x* 多遠？（只看 ρ = 10⁴ 的懲罰子問題，精確解離 x* 是 2.4 × 10⁻⁴）"
+    scenario: {}
+    show: [penalty]
+    options:
+      - {label: "不到 10⁻³，接近 2.4 × 10⁻⁴", when: {final_dist_below: 1.0e-3}}
+      - {label: "10⁻³～10⁻²", when: {final_dist_above: 1.0e-3, final_dist_below: 1.0e-2}}
+      - {label: "10⁻² 以上", when: {final_dist_above: 1.0e-2}}
+    explain: "‖x − x*‖ = 0.0050，約是子問題精確解的 20 倍。ρ 越大，懲罰函數的等高線越扁（病態），GD 內迴圈越慢：五輪的內圈步數是 43、24、100、100、100，後三輪都用完上限，沒有解到子問題的最小點。"
+  - id: p3
+    prompt: "跳過暖身，一開始就用 ρ₀ = 1000（γ = 10，所以兩輪就到 10⁴）。停止時離 x* 多遠？"
+    scenario: {params: {penalty: {rho0: 1000.0}}}
+    show: [penalty]
+    options:
+      - {label: "比預設更近（不到 0.005）", when: {final_dist_below: 0.005}}
+      - {label: "0.005～0.1", when: {final_dist_above: 0.005, final_dist_below: 0.1}}
+      - {label: "0.1 以上", when: {final_dist_above: 0.1}}
+    explain: "距離 0.185，比預設差了 30 多倍，第 200 步就停止。ρ = 1000 的子問題從遠處的起點出發就很病態，GD 每輪 100 步走不完；所以 ρ 要從小放大，讓每一輪從上一輪的解（已經很近）暖啟動。"
+  - id: p4
+    prompt: "改成 ρ₀ = 1、放大倍數 γ = 100（三輪：ρ = 1、100、10⁴）。輪數變少，最後離 x* 會比預設（0.0050）近嗎？"
+    scenario: {params: {penalty: {gamma: 100.0}}}
+    show: [penalty]
+    options:
+      - {label: "更近（不到 0.0050）", when: {final_dist_below: 0.005}}
+      - {label: "更遠（0.0050 以上）", when: {final_dist_above: 0.005}}
+    explain: "更遠：第 243 步停止，距離 0.042。ρ 一次跳 100 倍，上一輪的解離新子問題的解太遠，暖啟動幫不上忙，病態的內迴圈又在步數上限內走不到。"
 ---
 
 ## 定義

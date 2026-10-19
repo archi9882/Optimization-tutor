@@ -10,6 +10,33 @@ lab:
     sgd: {lr: 0.15, sigma: 1.0, decay: 0.0}
   n_iter: 150
 practice: sgd
+predict:
+  - id: p1
+    prompt: "把雜訊 σ 調到 0，SGD（η = 0.15）150 步內 f − f* 能降到 10⁻¹⁰ 以下嗎？"
+    scenario: {params: {sgd: {sigma: 0.0}}, n_iter: 150}
+    subject: sgd
+    show: [gd, sgd]
+    options:
+      - {label: "能", when: {reach_within: 150}}
+      - {label: "不能", when: {not_reach_within: 150}}
+    explain: "沒有雜訊時，SGD 每步用的就是真梯度，更新式和 GD 一模一樣，兩條軌跡完全重合（都在第 78 步達到 10⁻¹⁰）。SGD 與 GD 唯一的差別就是梯度裡的雜訊。"
+  - id: p2
+    prompt: "雜訊只剩 σ = 0.1，η = 0.15 固定，跑 500 步。f − f* 能降到 10⁻¹⁰ 以下嗎？"
+    scenario: {params: {sgd: {sigma: 0.1}}, n_iter: 500}
+    subject: sgd
+    options:
+      - {label: "能，雜訊這麼小，多跑幾步就行", when: {reach_within: 500}}
+      - {label: "不能，會一直在最小值附近亂跳", when: {not_reach_within: 500}}
+    explain: "步長固定時，每步都注入 η × 雜訊，迭代點最後停在最小值附近的「雜訊球」裡，球的大小不隨步數縮小（小 η 時 f − f* 約與 ησ² 成正比）。同一組亂數下，500 步後 f − f* = 2.6 × 10⁻³，σ = 1 時是 0.26：σ 縮小 10 倍，f − f* 剛好縮小 100 倍，但永遠不會是零。"
+  - id: p3
+    prompt: "σ = 1，改用衰減步長 ηₖ = η₀/(1 + ck)，c = 0.05，跑 500 步。結果會？"
+    scenario: {params: {sgd: {decay: 0.05}}, n_iter: 500}
+    subject: sgd
+    options:
+      - {label: "500 步內 f − f* 降到 10⁻¹⁰ 以下", when: {reach_within: 500}}
+      - {label: "到不了 10⁻¹⁰，但最後 f − f* < 10⁻²", when: {not_reach_within: 500, final_gap_below: 1.0e-2}}
+      - {label: "和固定步長差不多：最後 f − f* ≥ 10⁻²", when: {not_reach_within: 500, final_gap_above: 1.0e-2}}
+    explain: "步長遞減讓雜訊球跟著縮小，500 步後 f − f* 降到 1.6 × 10⁻³（固定步長時約 0.26）。但步長按 1/k 變小，誤差也只能以大約 1/k 的次線性速率下降，遠到不了 10⁻¹⁰：精確收斂和速度不能兼得，這是 SGD 的根本取捨。"
 ---
 
 ## 定義

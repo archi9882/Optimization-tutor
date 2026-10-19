@@ -7,6 +7,31 @@ lab:
   n_iter: 60
   reach_tol: 1.0e-8   # widget reports "f − f* < 1e-8 於第 k 步", as quoted below
 practice: powell
+predict:
+  - id: p1
+    prompt: "Powell 法在 Rosenbrock 上 15 輪就停止（一步 = 一輪，二維時 3 次一維搜尋）。整次執行一共算了幾次 f？"
+    scenario: {}
+    options:
+      - {label: "不到 300 次", when: {evals_below: 300}}
+      - {label: "300～999 次", when: {evals_above: 300, evals_below: 1000}}
+      - {label: "1000 次以上", when: {evals_above: 1000}}
+    explain: "1803 次：15 輪共 44 次一維搜尋，每次一維搜尋平均約 41 次 f 計算。輪數少不等於便宜；Nelder-Mead 要 126 步，卻只用 245 次 f 計算。"
+  - id: p2
+    prompt: "換到二次碗、κ = 10、旋轉 30°。Powell 法要幾輪才達到 f − f* < 10⁻⁸？"
+    scenario: {problem: quadratic, problem_params: {kappa: 10, theta_deg: 30}}
+    options:
+      - {label: "2 輪內", when: {reach_within: 2}}
+      - {label: "3～60 輪", when: {reach_within: 60, not_reach_within: 2}}
+      - {label: "60 輪內達不到", when: {not_reach_within: 60}}
+    explain: "第 2 輪就達到。在二次函數上，一維搜尋（黃金分割）幾乎精確時，每輪加入的新方向和舊方向共軛；二維時兩個共軛方向各搜尋一次就到最小值，和共軛梯度法的 2 步一致。"
+  - id: p3
+    prompt: "同樣旋轉 30°，把條件數 κ 從 10 調到 100（谷更窄）。Powell 法要幾輪？"
+    scenario: {problem: quadratic, problem_params: {kappa: 100, theta_deg: 30}}
+    options:
+      - {label: "2 輪內", when: {reach_within: 2}}
+      - {label: "3～60 輪", when: {reach_within: 60, not_reach_within: 2}}
+      - {label: "60 輪內達不到", when: {not_reach_within: 60}}
+    explain: "仍是第 2 輪。共軛方向加上（幾乎）精確的一維搜尋，在 n 維二次函數上 n 輪就到，和 κ 無關；GD 這類固定步長的方法才會被 κ 拖慢。"
 ---
 
 ## 定義

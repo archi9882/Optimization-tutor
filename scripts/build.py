@@ -155,7 +155,7 @@ def _on_grid(what: str, values: list, v: float) -> None:
 
 
 SCENARIO_KEYS = {"problem", "problem_params", "params", "n_iter", "x0"}
-QUESTION_KEYS = {"prompt", "scenario", "options", "explain", "subject", "show"}
+QUESTION_KEYS = {"id", "prompt", "scenario", "options", "explain", "subject", "show"}
 OPTION_KEYS = {"label", "when"}
 
 
@@ -220,6 +220,20 @@ def round_sig(obj: object, digits: int = 6) -> object:
     return obj
 
 
+def embed_trace(t: dict, prob) -> dict:
+    """A scenario trace as embedded in the page, rounded by round_sig.
+
+    On a constrained problem the lab shows ‖x−x*‖ of the last iterate (down to
+    1e-12), which 6 significant digits of x cannot carry, so the iterates are
+    kept at full precision there: the lab's result line then shows the same
+    distance as the reveal's measured summary.
+    """
+    out = round_sig(t)
+    if prob.constraints:
+        out["xs"] = t["xs"]
+    return out
+
+
 def _same_run(spec: dict, run: dict, default: dict | None) -> bool:
     """True when this run of a scenario is the page's default run (same trace)."""
     if not default:
@@ -239,14 +253,23 @@ def predict_data(algo_id: str, lab_cfg: dict, questions: list[dict],
     predicate is malformed, or not exactly one option holds. With `default`
     (the page's lab_data), a trace identical to the default lab's is not
     embedded again: it becomes {"algo": id, "same": true}. Other traces are
-    rounded to 6 significant digits (the answer is measured before rounding).
+    rounded to 6 significant digits (the answer is measured before rounding),
+    except the iterates of a constrained problem (see embed_trace).
     """
     reach_tol = lab_cfg.get("reach_tol", 1e-10)
     algos = lab_cfg["algos"] + lab_cfg.get("compare", [])
     out = []
+    seen: set = set()
     for n, q in enumerate(questions, 1):
-        qid = f"{algo_id}#p{n}"
+        # Saved predictions are keyed by this id, so it is explicit and stable:
+        # reordering questions must not move a learner's answers.
+        qid = f"{algo_id}#{q['id']}" if isinstance(q, dict) and isinstance(q.get("id"), str) else f"{algo_id}#(第 {n} 題)"
         try:
+            if not isinstance(q.get("id"), str) or not re.fullmatch(r"p\d+", q["id"]):
+                raise ValueError("every question needs an explicit id such as 'p1' (saved answers use it)")
+            if q["id"] in seen:
+                raise ValueError(f"duplicate question id {q['id']!r}")
+            seen.add(q["id"])
             _known("question", q, QUESTION_KEYS)
             for key in ("prompt", "scenario", "options", "explain"):
                 if key not in q:
@@ -265,14 +288,15 @@ def predict_data(algo_id: str, lab_cfg: dict, questions: list[dict],
             for o in q["options"]:
                 _known("option", o, OPTION_KEYS)
                 predmod.validate(o.get("when"))
+            prob = make_problem(spec["problem"], **spec["problem_params"])
             traces = api.traces(spec)
             sub = next(t for t in traces if t["algo"] == subject)
-            m = predmod.measure(sub, fstar, reach_tol)
+            m = predmod.measure(sub, fstar, reach_tol, prob)
             ans = predmod.answer(q["options"], m)
         except (ValueError, KeyError, TypeError) as err:
             raise ValueError(f"{qid}: {err}") from err
         embedded = [{"algo": t["algo"], "same": True}
-                    if _same_run(spec, run, default) else round_sig(t)
+                    if _same_run(spec, run, default) else embed_trace(t, prob)
                     for t, run in zip(traces, spec["runs"])]
         out.append({
             "id": qid, "prompt": q["prompt"], "explain": q["explain"],
