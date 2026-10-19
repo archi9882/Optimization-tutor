@@ -1,0 +1,410 @@
+{
+ "adagrad#q1": {
+  "sha": "08f3c23dd383",
+  "q": "Q1. AdaGrad 第一步每個座標走多遠？為什麼？"
+ },
+ "adagrad#q2": {
+  "sha": "9e112c0fe7b4",
+  "q": "Q2. 為什麼 AdaGrad 適合稀疏特徵？"
+ },
+ "adagrad#q3": {
+  "sha": "beca02c6afff",
+  "q": "Q3. AdaGrad 最大的缺點是什麼？後續怎麼改？"
+ },
+ "adam#q1": {
+  "sha": "032e6204645d",
+  "q": "Q1. 為什麼 Adam 需要偏差修正？不修正會怎樣？"
+ },
+ "adam#q2": {
+  "sha": "1b65cccc6c91",
+  "q": "Q2. Adam 的學習率 η 有什麼直觀意義？"
+ },
+ "adam#q3": {
+  "sha": "36e41207be72",
+  "q": "Q3. 什麼情況下你不會選 Adam？"
+ },
+ "augmented-lagrangian#q1": {
+  "sha": "d377b3cdc5f8",
+  "q": "Q1. 為什麼增廣 Lagrangian 法不需要 ρ → ∞？"
+ },
+ "augmented-lagrangian#q2": {
+  "sha": "3eda73960dab",
+  "q": "Q2. 乘數更新 λ ← λ + ρ·h(x) 是怎麼來的？"
+ },
+ "augmented-lagrangian#q3": {
+  "sha": "bf1d82bdfb62",
+  "q": "Q3. 不等式限制在增廣 Lagrangian 裡怎麼處理？"
+ },
+ "barrier#q1": {
+  "sha": "7681c657e28e",
+  "q": "Q1. 障礙法的駐點條件和 KKT 條件差在哪裡？"
+ },
+ "barrier#q2": {
+  "sha": "70ca2f1bc9da",
+  "q": "Q2. 凸問題中，如何不知道 f* 也能判斷障礙法的誤差？"
+ },
+ "barrier#q3": {
+  "sha": "301704401373",
+  "q": "Q3. 為什麼障礙法需要嚴格可行的起點？找不到怎麼辦？"
+ },
+ "bfgs#q1": {
+  "sha": "6eac24428a22",
+  "q": "Q1. BFGS 怎麼在不算 Hessian 的情況下得到曲率資訊？"
+ },
+ "bfgs#q2": {
+  "sha": "91ca67d241d1",
+  "q": "Q2. 為什麼 BFGS 不會像牛頓法一樣跑到最大值？"
+ },
+ "bfgs#q3": {
+  "sha": "02c99dbf743f",
+  "q": "Q3. BFGS、牛頓法、梯度下降的每步成本與收斂速度怎麼比？"
+ },
+ "branch-and-bound#q1": {
+  "sha": "87414577ffea",
+  "q": "Q1. 為什麼 LP 鬆弛的最優值是整數規劃的上界？"
+ },
+ "branch-and-bound#q2": {
+  "sha": "5e52f4a9dfe0",
+  "q": "Q2. 什麼情況下可以剪枝（丟掉一個節點）？"
+ },
+ "branch-and-bound#q3": {
+  "sha": "cf7152378071",
+  "q": "Q3. 為什麼不能直接把 LP 的解四捨五入？"
+ },
+ "coordinate-descent#q1": {
+  "sha": "3f24ff0d2969",
+  "q": "Q1. 座標下降和 Gauss–Seidel 有什麼關係？"
+ },
+ "coordinate-descent#q2": {
+  "sha": "c2c40fbd99f8",
+  "q": "Q2. 為什麼 Lasso 常用座標下降，而不是梯度下降？"
+ },
+ "coordinate-descent#q3": {
+  "sha": "a30bc670341f",
+  "q": "Q3. 什麼情況下座標下降會失敗？"
+ },
+ "cutting-plane#q1": {
+  "sha": "44cbea14d754",
+  "q": "Q1. 什麼是有效不等式？割平面為什麼不會丟掉最優解？"
+ },
+ "cutting-plane#q2": {
+  "sha": "a62fbe603358",
+  "q": "Q2. 割平面法和分支定界法有什麼不同？實務上怎麼用？"
+ },
+ "cutting-plane#q3": {
+  "sha": "f2ab2f1074f1",
+  "q": "Q3. 為什麼加入割之後適合用對偶單純形法？"
+ },
+ "dual-simplex#q1": {
+  "sha": "13c19e02a8a5",
+  "q": "Q1. 原始單純形法與對偶單純形法各自維持什麼？停止條件是什麼？"
+ },
+ "dual-simplex#q2": {
+  "sha": "478616caa3fd",
+  "q": "Q2. 為什麼分支定界法偏好用對偶單純形法解子問題？"
+ },
+ "dual-simplex#q3": {
+  "sha": "1fa501fcf2ee",
+  "q": "Q3. 在施肥的例子中，成本為什麼一路上升？這跟原始單純形法有什麼不同？"
+ },
+ "dynamic-programming#q1": {
+  "sha": "c5712044738c",
+  "q": "Q1. 動態規劃和貪婪法的差別是什麼？"
+ },
+ "dynamic-programming#q2": {
+  "sha": "1869c7580ce3",
+  "q": "Q2. 什麼樣的問題可以用動態規劃？"
+ },
+ "dynamic-programming#q3": {
+  "sha": "81787d31a0de",
+  "q": "Q3. 為什麼從最後一個月往回算？"
+ },
+ "frank-wolfe#q1": {
+  "sha": "35708e0269f4",
+  "q": "Q1. Frank-Wolfe 為什麼不需要投影就能保持可行？"
+ },
+ "frank-wolfe#q2": {
+  "sha": "6f2fe83f15ce",
+  "q": "Q2. Frank-Wolfe 間隙是什麼？為什麼可以當停止條件？"
+ },
+ "frank-wolfe#q3": {
+  "sha": "a72fd7cd6448",
+  "q": "Q3. 什麼情況下 Frank-Wolfe 比投影梯度好？"
+ },
+ "gauss-newton#q1": {
+  "sha": "891bfbb1f53d",
+  "q": "Q1. 高斯-牛頓和牛頓法差在哪裡？什麼時候差別很小？"
+ },
+ "gauss-newton#q2": {
+  "sha": "122d363118dd",
+  "q": "Q2. 線性最小平方問題上，高斯-牛頓要幾步？"
+ },
+ "gauss-newton#q3": {
+  "sha": "8427bce9ff72",
+  "q": "Q3. 參數校準時 J^⊤J 接近奇異，代表什麼？"
+ },
+ "gd#q1": {
+  "sha": "69573fbed36d",
+  "q": "Q1. 為什麼學習率不能超過 2/L？能用最簡單的例子說明嗎？"
+ },
+ "gd#q2": {
+  "sha": "c78ecab245fe",
+  "q": "Q2. 條件數加倍，GD 需要的迭代數大約怎麼變？"
+ },
+ "gd#q3": {
+  "sha": "e57d95447ddc",
+  "q": "Q3. 梯度下降和數值解 ODE 有什麼關係？"
+ },
+ "greedy#q1": {
+  "sha": "1016caeda7ca",
+  "q": "Q1. 貪婪法什麼時候保證最優？"
+ },
+ "greedy#q2": {
+  "sha": "9cf4c32f6a9c",
+  "q": "Q2. 給一個貪婪法失敗的例子。"
+ },
+ "greedy#q3": {
+  "sha": "39d9b180896d",
+  "q": "Q3. Kruskal 怎麼快速判斷兩點是否已連通？"
+ },
+ "hungarian#q1": {
+  "sha": "b59f1f8e0f63",
+  "q": "Q1. 為什麼每列減去一個常數不會改變最優分派？"
+ },
+ "hungarian#q2": {
+  "sha": "ef0231332289",
+  "q": "Q2. 怎麼知道已經可以分派了？"
+ },
+ "hungarian#q3": {
+  "sha": "888e6a5f591c",
+  "q": "Q3. 指派問題是整數規劃，為什麼不需要分支定界？"
+ },
+ "lbfgs#q1": {
+  "sha": "1f9a98b508c3",
+  "q": "Q1. L-BFGS 的記憶體和計算成本是多少？和 BFGS 比呢？"
+ },
+ "lbfgs#q2": {
+  "sha": "4428e207f37f",
+  "q": "Q2. 為什麼 PINN 常先用 Adam 再換 L-BFGS？"
+ },
+ "lbfgs#q3": {
+  "sha": "2a6990e3eda6",
+  "q": "Q3. 兩迴圈遞推中的 γ 有什麼作用？"
+ },
+ "levenberg-marquardt#q1": {
+  "sha": "96e5ab1e62b7",
+  "q": "Q1. λ 很大和很小時，LM 分別像什麼方法？"
+ },
+ "levenberg-marquardt#q2": {
+  "sha": "5ac48b0ef8b2",
+  "q": "Q2. 為什麼說 LM 是信賴域法？"
+ },
+ "levenberg-marquardt#q3": {
+  "sha": "aeddf4aa621b",
+  "q": "Q3. LM 一定比高斯-牛頓好嗎？"
+ },
+ "lp-interior-point#q1": {
+  "sha": "2fb910e2bf6b",
+  "q": "Q1. 障礙參數 μ 的作用是什麼？為什麼不一開始就用很小的 μ？"
+ },
+ "lp-interior-point#q2": {
+  "sha": "f436db12e573",
+  "q": "Q2. 內點法和單純形法各適合什麼情況？"
+ },
+ "lp-interior-point#q3": {
+  "sha": "21719115a668",
+  "q": "Q3. 目標函數和某條限制平行時，兩種方法的答案有什麼不同？"
+ },
+ "momentum#q1": {
+  "sha": "b5cd028b28d1",
+  "q": "Q1. 動量為什麼能減少震盪？用一句話說。"
+ },
+ "momentum#q2": {
+  "sha": "e0b6a32be0fc",
+  "q": "Q2. β = 0.9 時，平緩方向的等效步長大約放大多少倍？"
+ },
+ "momentum#q3": {
+  "sha": "8b7d3108f693",
+  "q": "Q3. 為什麼動量的軌跡會是螺旋形？"
+ },
+ "nelder-mead#q1": {
+  "sha": "cbeecc025cb2",
+  "q": "Q1. Nelder-Mead 和線性規劃的單純形法有什麼關係？"
+ },
+ "nelder-mead#q2": {
+  "sha": "b049428d7b98",
+  "q": "Q2. Nelder-Mead 保證收斂嗎？"
+ },
+ "nelder-mead#q3": {
+  "sha": "17aebf49e2e4",
+  "q": "Q3. 怎麼比較無導數方法和梯度法的成本？"
+ },
+ "nesterov#q1": {
+  "sha": "a01372ba58d6",
+  "q": "Q1. Nesterov 和動量法只差在哪裡？為什麼差這一點就有保證？"
+ },
+ "nesterov#q2": {
+  "sha": "845e1cd6e03f",
+  "q": "Q2. 「最優一階方法」的「最優」是什麼意思？"
+ },
+ "nesterov#q3": {
+  "sha": "3d500f119b51",
+  "q": "Q3. PyTorch 的 Nesterov 只在目前參數算梯度，這樣還是 Nesterov 嗎？"
+ },
+ "newton#q1": {
+  "sha": "71cc173ae692",
+  "q": "Q1. 牛頓法為什麼收斂這麼快？什麼條件下才成立？"
+ },
+ "newton#q2": {
+  "sha": "2101081c8bfb",
+  "q": "Q2. 為什麼牛頓法可能收斂到最大值？怎麼避免？"
+ },
+ "newton#q3": {
+  "sha": "752be4c39c99",
+  "q": "Q3. 為什麼深度學習不用牛頓法？"
+ },
+ "nonlinear-cg#q1": {
+  "sha": "de16b62c3a36",
+  "q": "Q1. 什麼是共軛方向？為什麼它能讓二次函數 n 步收斂？"
+ },
+ "nonlinear-cg#q2": {
+  "sha": "fce6ee8f1b71",
+  "q": "Q2. 線性 CG 和非線性 CG 的關係是什麼？"
+ },
+ "nonlinear-cg#q3": {
+  "sha": "aecb7b7c19a8",
+  "q": "Q3. 為什麼現在大規模問題多用 L-BFGS 而不是非線性 CG？"
+ },
+ "pattern-search#q1": {
+  "sha": "7580f420f8d4",
+  "q": "Q1. 模式搜尋沒有梯度，憑什麼說它會收斂？"
+ },
+ "pattern-search#q2": {
+  "sha": "79ff2881debb",
+  "q": "Q2. 為什麼把二次碗旋轉 45°，模式搜尋就慢很多？"
+ },
+ "pattern-search#q3": {
+  "sha": "2c3b918cb844",
+  "q": "Q3. 「第一個改善就走」和「全部試完取最好」各有什麼好處？"
+ },
+ "penalty#q1": {
+  "sha": "849e8b6fceeb",
+  "q": "Q1. 二次懲罰法的解為什麼通常不可行？違反量大概多大？"
+ },
+ "penalty#q2": {
+  "sha": "7ba2ed710e5e",
+  "q": "Q2. 為什麼不直接把 ρ 設成很大？"
+ },
+ "penalty#q3": {
+  "sha": "5dd9a4a17541",
+  "q": "Q3. 懲罰法和增廣 Lagrangian 法差在哪？"
+ },
+ "powell#q1": {
+  "sha": "3274c1ef0334",
+  "q": "Q1. Powell 法怎麼在不用梯度的情況下得到共軛方向？"
+ },
+ "powell#q2": {
+  "sha": "679bdb501c8c",
+  "q": "Q2. 為什麼要丟掉「下降最多」的方向，而不是最舊的？"
+ },
+ "powell#q3": {
+  "sha": "dad38c8da191",
+  "q": "Q3. Powell 法在 Rosenbrock 上只用 15 輪，Nelder-Mead 要 126 步，哪個比較快？"
+ },
+ "projected-gradient#q1": {
+  "sha": "42751d558b28",
+  "q": "Q1. 投影梯度法的停止條件為什麼不能用 ‖∇f‖ 很小？"
+ },
+ "projected-gradient#q2": {
+  "sha": "7523a2de0069",
+  "q": "Q2. 投影梯度的收斂率和 GD 相比如何？為什麼？"
+ },
+ "projected-gradient#q3": {
+  "sha": "6632a859876a",
+  "q": "Q3. 什麼時候該用投影梯度，什麼時候該用 Frank-Wolfe？"
+ },
+ "qp-active-set#q1": {
+  "sha": "3296b9af3af1",
+  "q": "Q1. 有效集法中，乘數為負代表什麼？為什麼要移出那條限制？"
+ },
+ "qp-active-set#q2": {
+  "sha": "a863f87b788c",
+  "q": "Q2. 有效集法和單純形法有什麼關係？"
+ },
+ "qp-active-set#q3": {
+  "sha": "0f80a6a172c2",
+  "q": "Q3. 為什麼模型預測控制常用有效集法？"
+ },
+ "rmsprop#q1": {
+  "sha": "4d5eb06e9813",
+  "q": "Q1. RMSProp 和 AdaGrad 差在哪裡？為什麼這一點很重要？"
+ },
+ "rmsprop#q2": {
+  "sha": "5e93cab3ba6b",
+  "q": "Q2. ρ = 0.99 時，第一步會走多遠？"
+ },
+ "rmsprop#q3": {
+  "sha": "67d6ce89a962",
+  "q": "Q3. 為什麼 RMSProp 搭配固定學習率很難收斂到很精確？"
+ },
+ "sgd#q1": {
+  "sha": "fab4b67cd514",
+  "q": "Q1. 為什麼 SGD 用的是「有雜訊的梯度」還能收斂？"
+ },
+ "sgd#q2": {
+  "sha": "04e644cfeca6",
+  "q": "Q2. 固定學習率的 SGD 最後會停在哪裡？"
+ },
+ "sgd#q3": {
+  "sha": "a31c93d077ea",
+  "q": "Q3. 批次大小加倍，對訓練有什麼影響？"
+ },
+ "simplex#q1": {
+  "sha": "21294f8d5a4f",
+  "q": "Q1. 為什麼 LP 的最優解一定可以在頂點找到？"
+ },
+ "simplex#q2": {
+  "sha": "57839981e235",
+  "q": "Q2. 比值測試在做什麼？如果整欄都沒有正數代表什麼？"
+ },
+ "simplex#q3": {
+  "sha": "603fa620d6a1",
+  "q": "Q3. 影子價格是什麼？在這個作物配置問題中怎麼解讀？"
+ },
+ "tabu-search#q1": {
+  "sha": "1684a3b72563",
+  "q": "Q1. 禁忌搜尋怎麼跳出局部最優？"
+ },
+ "tabu-search#q2": {
+  "sha": "c17e279cead6",
+  "q": "Q2. 特赦規則的作用是什麼？"
+ },
+ "tabu-search#q3": {
+  "sha": "29798ebb3b8d",
+  "q": "Q3. 禁忌搜尋和模擬退火有什麼不同？"
+ },
+ "trust-region#q1": {
+  "sha": "a3118436ba14",
+  "q": "Q1. 信賴域法和線搜尋法的差別是什麼？"
+ },
+ "trust-region#q2": {
+  "sha": "ee076ee29500",
+  "q": "Q2. 比值 ρ 有什麼作用？"
+ },
+ "trust-region#q3": {
+  "sha": "4a22fb86317d",
+  "q": "Q3. 為什麼信賴域法不怕 Hessian 不正定？"
+ },
+ "two-opt#q1": {
+  "sha": "5b1d93cf753c",
+  "q": "Q1. 2-opt 交換時，為什麼要把中間一段反轉？"
+ },
+ "two-opt#q2": {
+  "sha": "c792a996b413",
+  "q": "Q2. 2-opt 的結果一定是最短路線嗎？"
+ },
+ "two-opt#q3": {
+  "sha": "53e2449250d8",
+  "q": "Q3. 計算增益時為什麼不用重算整條路線？"
+ }
+}

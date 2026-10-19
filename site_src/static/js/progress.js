@@ -44,6 +44,17 @@ export function daysBetween(a, b) {
 // ---------- load / save ----------
 export function storageAvailable() { return storageOk; }
 
+/** Try a throwaway write, for pages that only read (the home page). */
+export function probeStorage() {
+  try {
+    localStorage.setItem(`${KEY}.probe`, "1");
+    localStorage.removeItem(`${KEY}.probe`);
+  } catch (e) {
+    storageOk = false;
+  }
+  return storageOk;
+}
+
 export function load() {
   if (!storageOk && memory) return structuredClone(memory);
   let raw = null;

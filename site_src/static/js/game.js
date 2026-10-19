@@ -59,6 +59,12 @@ function renderMastery(el, algoId, cardCount, hasPractice) {
   el.hidden = false;
 }
 
+// Shown on algorithm pages and the home page when localStorage is unusable.
+function storageNote() {
+  return h("p", { class: "storage-note", role: "note" },
+    "這個瀏覽器無法使用本機儲存（例如私密瀏覽或封鎖了網站資料）：練習與複習進度只保留到關閉分頁為止。");
+}
+
 // ---------- algorithm page ----------
 const article = document.querySelector("article.algo[data-algo]");
 if (article && article.dataset.detailed === "1") {
@@ -70,11 +76,7 @@ if (article && article.dataset.detailed === "1") {
   const draw = () => el && renderMastery(el, id, cardCount, hasPractice);
   draw();
   // recordVisit() above has tried storage, so storageAvailable() is now known.
-  if (!P.storageAvailable()) {
-    const note = h("p", { class: "storage-note", role: "note" },
-      "這個瀏覽器無法使用本機儲存（例如私密瀏覽或封鎖了網站資料）：練習與複習進度只保留到關閉分頁為止。");
-    (el || article.querySelector(".algo-head")).after(note);
-  }
+  if (!P.storageAvailable()) (el || article.querySelector(".algo-head")).after(storageNote());
   window.addEventListener("ot-progress", draw);
   window.addEventListener("storage", (e) => { if (e.key === P.KEY) draw(); });
 }
@@ -99,6 +101,8 @@ if (cardsData) {
     }
   };
   drawRings();
+  // The home page never saves, so probe a write as well as the read in load().
+  if (!P.probeStorage()) document.querySelector(".hero")?.append(storageNote());
   window.addEventListener("ot-progress", drawRings);
   window.addEventListener("storage", (e) => { if (e.key === P.KEY) drawRings(); });
 }

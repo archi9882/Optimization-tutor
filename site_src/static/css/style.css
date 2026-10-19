@@ -429,3 +429,5 @@ table.tableau td.uncov { background: color-mix(in srgb, var(--s4) 10%, transpare
 /* Contrast fix (QA): white text on these fills needs ≥ 4.5:1 in both themes. */
 .nav-badge { background: #1c5cab; }
 .btn-primary { background: #1f63b8; border-color: #1f63b8; text-decoration: none; }
+/* ---- P0: 重設 in LP / combo labs (keeps .btn-small sizing on phones) ---- */
+.lp-lab .widget-row .btn.btn-small { padding: 3px 10px; font-size: 13px; }

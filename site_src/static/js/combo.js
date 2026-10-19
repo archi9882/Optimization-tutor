@@ -26,15 +26,17 @@ const h = (tag, attrs = {}, ...kids) => {
 
 // ---------- layout ----------
 const pyStatus = h("span", { class: "py-status" });
+const sliderSetters = [];
 const sliders = (data.sliders || []).map((sl) => {
-  const value = st.spec.params[sl.name] ?? sl.default;
-  const out = h("output", {}, String(value));
-  const input = h("input", { type: "range", min: sl.lo, max: sl.hi, step: sl.step || 1, value, "aria-label": sl.label });
+  const initial = () => data.spec.params[sl.name] ?? sl.default;   // build-time value
+  const out = h("output", {}, String(initial()));
+  const input = h("input", { type: "range", min: sl.lo, max: sl.hi, step: sl.step || 1, value: initial(), "aria-label": sl.label });
   input.addEventListener("input", () => {
     out.textContent = input.value;
     st.spec.params[sl.name] = Number(input.value);
     schedule();
   });
+  sliderSetters.push(() => { input.value = String(initial()); out.textContent = input.value; });
   return h("label", { class: "slider" }, sl.label, input, out);
 });
 const viewTitle = h("div", { class: "plot-title" });
@@ -47,10 +49,12 @@ const prevBtn = h("button", { class: "btn", type: "button", onclick: () => { pau
 const playBtn = h("button", { class: "btn btn-primary", type: "button", onclick: () => (st.playing ? pause() : play()) }, "▶ 播放");
 const nextBtn = h("button", { class: "btn", type: "button", onclick: () => { pause(); setFrame(st.frame + 1); } }, "下一步 ▶");
 const resetBtn = h("button", { class: "btn", type: "button", onclick: () => { pause(); setFrame(0); } }, "⏮ 重來");
+const defaultsBtn = h("button", { class: "btn btn-small", type: "button", title: "回到本頁預設的參數與結果",
+  onclick: () => resetParams() }, "重設");
 
 mount.append(h("div", { class: "widget lab lp-lab" },
   h("p", { class: "lp-problem" }, h("strong", {}, st.res.name), " ", h("span", { class: "hint-text" }, st.res.note)),
-  sliders.length ? h("div", { class: "widget-row" }, ...sliders, pyStatus) : "",
+  sliders.length ? h("div", { class: "widget-row" }, ...sliders, defaultsBtn, pyStatus) : "",
   h("div", { class: `lab-plots${st.res.kind === "graph" ? "" : " combo-wide"}` }, h("div", {}, viewTitle, view), h("div", {}, panelTitle, panel)),
   note,
   h("div", { class: "widget-row" }, resetBtn, prevBtn, playBtn, nextBtn, counter)));
@@ -230,6 +234,17 @@ async function recompute() {
   } catch (err) {
     counter.textContent = `計算失敗：${err.message}`;
   }
+}
+
+// Back to the build-time parameters and result (embedded in the page; no Python).
+function resetParams() {
+  clearTimeout(debounce);
+  st.version++;               // drop any recompute still in flight
+  pause();
+  st.spec = structuredClone(data.spec);
+  st.res = data.result;
+  sliderSetters.forEach((set) => set());
+  setFrame(0);
 }
 
 // ---------- boot ----------

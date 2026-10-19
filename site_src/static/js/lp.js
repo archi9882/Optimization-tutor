@@ -42,6 +42,10 @@ function frac(v) {
   return fmt(v);
 }
 
+// Build-time slider value: the page's preset_params, else the preset's own c.
+const initialValue = (name) => data.spec.preset_params[name] ?? data.result.region.c[SLIDERS[name].index];
+
+const sliderSetters = [];
 function slider(name, value) {
   const m = SLIDERS[name];
   const out = h("output", {}, String(value));
@@ -51,25 +55,28 @@ function slider(name, value) {
     st.spec.preset_params[name] = Number(input.value);
     schedule();
   });
+  sliderSetters.push(() => { input.value = String(initialValue(name)); out.textContent = input.value; });
   return h("label", { class: "slider" }, m.label, input, out);
 }
 
 // ---------- layout ----------
 const pyStatus = h("span", { class: "py-status" });
-const sliders = data.sliders.map((n) => slider(n, st.spec.preset_params[n] ?? st.res.region.c[SLIDERS[n].index]));
+const sliders = data.sliders.map((n) => slider(n, initialValue(n)));
 const plotBox = h("div", {}, h("div", { class: "plot-title" }, "可行域（亮區）、等目標值線與路徑"));
 const panelTitle = h("div", { class: "plot-title" });
 const panel = h("div", { class: "lp-panel" });
 const note = h("p", { class: "step-note", "aria-live": "polite" });
 const counter = h("span", { class: "status-line" });
 const resetBtn = h("button", { class: "btn", type: "button", onclick: () => { pause(); setFrame(0); } }, "⏮ 重來");
+const defaultsBtn = h("button", { class: "btn btn-small", type: "button", title: "回到本頁預設的係數與求解結果",
+  onclick: () => resetParams() }, "重設");
 const prevBtn = h("button", { class: "btn", type: "button", onclick: () => { pause(); setFrame(st.frame - 1); } }, "◀ 上一步");
 const playBtn = h("button", { class: "btn btn-primary", type: "button", onclick: () => (st.playing ? pause() : play()) }, "▶ 播放");
 const nextBtn = h("button", { class: "btn", type: "button", onclick: () => { pause(); setFrame(st.frame + 1); } }, "下一步 ▶");
 
 mount.append(h("div", { class: "widget lab lp-lab" },
   h("p", { class: "lp-problem" }, h("strong", {}, st.res.name), " ", h("span", { class: "hint-text" }, st.res.note)),
-  sliders.length ? h("div", { class: "widget-row" }, ...sliders, pyStatus) : "",
+  sliders.length ? h("div", { class: "widget-row" }, ...sliders, defaultsBtn, pyStatus) : "",
   h("div", { class: `lab-plots${st.res.method === "cutting_plane" ? " even" : ""}` }, plotBox, h("div", {}, panelTitle, panel)),
   note,
   h("div", { class: "widget-row" }, resetBtn, prevBtn, playBtn, nextBtn, counter),
@@ -225,6 +232,19 @@ async function recompute() {
   } catch (err) {
     counter.textContent = `計算失敗：${err.message}`;
   }
+}
+
+// Back to the build-time coefficients and result; it is embedded in the page,
+// so no Python call is needed.
+function resetParams() {
+  clearTimeout(debounce);
+  st.version++;               // drop any recompute still in flight
+  pause();
+  st.spec = structuredClone(data.spec);
+  st.res = data.result;
+  st.frame = 0;
+  sliderSetters.forEach((set) => set());
+  render();
 }
 
 // ---------- boot ----------
