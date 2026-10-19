@@ -435,7 +435,6 @@ table.tableau td.uncov { background: color-mix(in srgb, var(--s4) 10%, transpare
 .predict { border-left: 3px solid var(--accent); }
 .predict-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 6px; }
 .predict-kicker { font-weight: 650; font-size: 14px; color: var(--accent-ink); }
-.predict-count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .predict-skip { margin-left: auto; }
 .predict .link-btn {
   background: none; border: 0; padding: 4px 2px; font: inherit; font-size: 14px;
@@ -465,11 +464,29 @@ table.tableau td.uncov { background: color-mix(in srgb, var(--s4) 10%, transpare
 .predict-verdict.good strong { color: var(--good); }
 .predict-verdict.bad strong { color: var(--bad); }
 .predict-measured { font-variant-numeric: tabular-nums; }
-/* Hide the answer (default plots and result lines) until the learner predicts. */
-.predict-hidden .lab-plots, .predict-hidden .algo-result, .predict-hidden .step-note {
-  filter: blur(7px); opacity: .45; pointer-events: none; user-select: none;
-}
+/* Cover the answer (plots, result lines) with a solid panel until the learner
+   predicts; the rest of the lab is dimmed (predict.js also makes it inert). */
+.predict-hidden .lab { position: relative; }
+.predict-hidden .lab > :not(.lab-plots) { opacity: .4; }
+.predict-hidden .algo-result, .predict-hidden .step-note { visibility: hidden; }
 .predict-hidden .lab-plots { position: relative; }
+.predict-hidden .lab-plots::after {
+  content: attr(data-cover); position: absolute; inset: 0; z-index: 3;
+  display: grid; place-items: center; border-radius: 8px;
+  background: var(--surface-2); color: var(--ink-2); font-size: 15px; font-weight: 600;
+}
+.predict-nav { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.predict .predict-pill {
+  min-width: 36px; min-height: 32px; padding: 2px 8px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--page); color: var(--ink-2);
+  font: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.predict .predict-pill[aria-current="step"] { border-color: var(--accent); color: var(--ink); box-shadow: inset 0 0 0 1px var(--accent); }
+.predict .predict-pill.good { color: var(--good); }
+.predict .predict-pill.bad { color: var(--bad); }
+.predict-lead { font-weight: 600; color: var(--ink-2); }
+.predict-prev { margin: 0 0 8px; }
+.predict-prev .link-btn { font-size: 13px; padding: 0; }
 @media (max-width: 480px) {
   .predict-options { flex-direction: column; }
   .widget .predict-option { width: 100%; }

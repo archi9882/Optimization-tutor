@@ -154,6 +154,20 @@ def _on_grid(what: str, values: list, v: float) -> None:
         raise ValueError(f"{what} = {v} is not on its slider grid (nearest {near})")
 
 
+SCENARIO_KEYS = {"problem", "problem_params", "params", "n_iter", "x0"}
+QUESTION_KEYS = {"prompt", "scenario", "options", "explain", "subject", "show"}
+OPTION_KEYS = {"label", "when"}
+
+
+def _known(what: str, got: dict, allowed: set) -> None:
+    """Fail on keys outside `allowed` (a typo would otherwise be ignored)."""
+    if not isinstance(got, dict):
+        raise ValueError(f"{what} must be a mapping, got {got!r}")
+    extra = set(got) - allowed
+    if extra:
+        raise ValueError(f"unknown {what} key(s) {sorted(extra)}; allowed: {sorted(allowed)}")
+
+
 def scenario_spec(lab_cfg: dict, sc: dict) -> dict:
     """Full lab spec of one prediction scenario, every value checked on the grids.
 
@@ -161,6 +175,7 @@ def scenario_spec(lab_cfg: dict, sc: dict) -> dict:
     Unset fields fall back to the page's lab settings; algorithms keep the
     page's parameters unless the scenario overrides them.
     """
+    _known("scenario", sc, SCENARIO_KEYS)
     algos = lab_cfg["algos"] + lab_cfg.get("compare", [])
     problem = sc.get("problem", lab_cfg["problem"])
     menu = lab_cfg.get("problems", ["quadratic", "rosenbrock", "himmelblau"])
@@ -174,9 +189,11 @@ def scenario_spec(lab_cfg: dict, sc: dict) -> dict:
         if k not in sliders:
             raise ValueError(f"problem {problem!r} has no slider {k!r}")
         _on_grid(f"{problem}.{k}", sliders[k].values(), v)
-    for a in sc.get("params", {}):
+    for a, ps in sc.get("params", {}).items():
         if a not in algos:
-            raise ValueError(f"scenario sets params of {a!r}, which is not in this lab")
+            raise ValueError(f"scenario sets params of {a!r}, which is not in this lab {algos}")
+        names = {p.name for p in OPTIMIZERS[a].params}
+        _known(f"{a} parameter", ps, names)
     runs = []
     for a in algos:
         merged = OPTIMIZERS[a].defaults() | lab_cfg.get("params", {}).get(a, {}) \
@@ -192,29 +209,71 @@ def scenario_spec(lab_cfg: dict, sc: dict) -> dict:
             "x0": x0, "runs": runs, "fstar": prob.fstar}
 
 
-def predict_data(algo_id: str, lab_cfg: dict, questions: list[dict]) -> list[dict]:
+def round_sig(obj: object, digits: int = 6) -> object:
+    """Round every float in a JSON-like object to `digits` significant digits."""
+    if isinstance(obj, float):
+        return float(f"{obj:.{digits}g}")
+    if isinstance(obj, list):
+        return [round_sig(v, digits) for v in obj]
+    if isinstance(obj, dict):
+        return {k: round_sig(v, digits) for k, v in obj.items()}
+    return obj
+
+
+def _same_run(spec: dict, run: dict, default: dict | None) -> bool:
+    """True when this run of a scenario is the page's default run (same trace)."""
+    if not default:
+        return False
+    d = default["spec"]
+    keys = ("problem", "problem_params", "n_iter")
+    if any(spec[k] != d[k] for k in keys) or list(spec["x0"]) != list(d["x0"]):
+        return False
+    return any(r["algo"] == run["algo"] and r["params"] == run["params"] for r in d["runs"])
+
+
+def predict_data(algo_id: str, lab_cfg: dict, questions: list[dict],
+                 default: dict | None = None) -> list[dict]:
     """Run every prediction scenario and decide its answer from the trace.
 
-    Raises (failing the build) when a value is off its slider grid, a
-    predicate is malformed, or not exactly one option holds.
+    Raises (failing the build) when a value is off its slider grid, a key or
+    predicate is malformed, or not exactly one option holds. With `default`
+    (the page's lab_data), a trace identical to the default lab's is not
+    embedded again: it becomes {"algo": id, "same": true}. Other traces are
+    rounded to 6 significant digits (the answer is measured before rounding).
     """
     reach_tol = lab_cfg.get("reach_tol", 1e-10)
+    algos = lab_cfg["algos"] + lab_cfg.get("compare", [])
     out = []
     for n, q in enumerate(questions, 1):
         qid = f"{algo_id}#p{n}"
         try:
+            _known("question", q, QUESTION_KEYS)
+            for key in ("prompt", "scenario", "options", "explain"):
+                if key not in q:
+                    raise ValueError(f"missing {key!r}")
             spec = scenario_spec(lab_cfg, q["scenario"])
             fstar = spec.pop("fstar")
             subject = q.get("subject", lab_cfg["algos"][0])
+            if subject not in algos:
+                raise ValueError(f"subject {subject!r} is not in this lab {algos}")
             shown = q.get("show", [subject])
-            if not 2 <= len(q["options"]) <= 4:
+            bad = [a for a in shown if a not in algos]
+            if bad:
+                raise ValueError(f"show: {bad} not in this lab {algos}")
+            if not isinstance(q["options"], list) or not 2 <= len(q["options"]) <= 4:
                 raise ValueError("a question needs 2 to 4 options")
+            for o in q["options"]:
+                _known("option", o, OPTION_KEYS)
+                predmod.validate(o.get("when"))
             traces = api.traces(spec)
             sub = next(t for t in traces if t["algo"] == subject)
             m = predmod.measure(sub, fstar, reach_tol)
             ans = predmod.answer(q["options"], m)
-        except (ValueError, KeyError, StopIteration) as err:
+        except (ValueError, KeyError, TypeError) as err:
             raise ValueError(f"{qid}: {err}") from err
+        embedded = [{"algo": t["algo"], "same": True}
+                    if _same_run(spec, run, default) else round_sig(t)
+                    for t, run in zip(traces, spec["runs"])]
         out.append({
             "id": qid, "prompt": q["prompt"], "explain": q["explain"],
             "subject": subject, "subject_name": OPTIMIZERS[subject].name,
@@ -223,11 +282,20 @@ def predict_data(algo_id: str, lab_cfg: dict, questions: list[dict]) -> list[dic
             "options": [{"label": o["label"],
                          "criterion": predmod.criterion(o["when"], reach_tol)}
                         for o in q["options"]],
-            "scenario": {"spec": spec, "enabled": shown, "traces": traces,
+            "scenario": {"spec": spec, "enabled": shown, "traces": embedded,
                          "same_grid": spec["problem"] == lab_cfg["problem"] and
                          spec["problem_params"] == lab_cfg.get("problem_params", {})},
         })
     return out
+
+
+def attach_predict(algo_id: str, meta: dict, lab: dict | None) -> None:
+    """Add the page's prediction questions to its lab data (if it has any)."""
+    if "predict" not in meta:
+        return
+    if lab is None:
+        raise ValueError(f"{algo_id}: predict: needs a lab: (renderer 1) on the same page")
+    lab["predict"] = predict_data(algo_id, meta["lab"], meta["predict"], lab)
 
 
 def lp_data(cfg: dict) -> dict:
@@ -368,9 +436,7 @@ def build(out: Path = OUT, vendor: Path | None = None) -> None:
         a["n_cards"] = len(recall)
         all_cards.extend(recall)
         lab = lab_data(meta["lab"]) if "lab" in meta else None
-        if "predict" in meta:
-            assert lab, f"{a['id']}: predict: needs a lab:"
-            lab["predict"] = predict_data(a["id"], meta["lab"], meta["predict"])
+        attach_predict(a["id"], meta, lab)
         lpd = lp_data(meta["lp"]) if "lp" in meta else None
         combod = combo_data(meta["combo"]) if "combo" in meta else None
         practice = practice_data(meta["practice"]) if "practice" in meta \

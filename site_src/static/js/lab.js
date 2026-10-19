@@ -271,6 +271,7 @@ function stepOnce() {
 let timer = null;
 let gridDirty = false;
 function schedule(needGrid) {
+  st.version++;               // an edit supersedes any pending scenario or recompute
   gridDirty ||= needGrid;
   clearTimeout(timer);
   timer = setTimeout(recompute, 150);
@@ -332,17 +333,24 @@ warmUp().catch(() => {});
 // Prediction questions (frontmatter predict:): put a scenario computed at
 // build time on the lab. The traces are embedded; only a scenario on another
 // problem or problem parameter needs Python for its contour grid.
+// Any later edit, reset or cancelScenario() bumps st.version; a scenario
+// still waiting for Python then rejects with err.superseded instead of
+// overwriting what the learner did meanwhile.
+const superseded = () => Object.assign(new Error("superseded"), { superseded: true });
+function cancelScenario() { st.version++; }
+function showEnd() { pause(); setFrame(Infinity); }
 async function applyScenario(sc) {
   clearTimeout(timer);
   gridDirty = false;
   const version = ++st.version;
   pause();
   const grid = sc.same_grid ? data.grid : await call("grid", sc.spec);
-  if (version !== st.version) throw new Error("superseded");
+  if (version !== st.version) throw superseded();
   st.spec = structuredClone(sc.spec);
   st.params = Object.fromEntries(sc.spec.runs.map((r) => [r.algo, { ...r.params }]));
   st.enabled = new Set(sc.enabled);
-  st.traces = sc.traces;
+  // {algo, same: true}: identical to the page's default trace (not embedded twice).
+  st.traces = sc.traces.map((t) => (t.same ? data.traces.find((d) => d.algo === t.algo) : t));
   st.grid = grid;
   st.frame = Infinity;
   problemSel.value = st.spec.problem;
@@ -364,6 +372,6 @@ function autoplay() {
 }
 if (data.predict) {
   import("./predict.js")
-    .then((m) => m.mountPredict(mount, data.predict, { applyScenario, playThrough, pause, play }))
+    .then((m) => m.mountPredict(mount, data.predict, { applyScenario, cancelScenario, playThrough, pause, play, showEnd }))
     .catch(autoplay);
 } else autoplay();

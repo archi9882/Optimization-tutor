@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from optlab import make_problem, predict
+from optlab import predict
 
 ROOT = Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location("build", ROOT / "scripts" / "build.py")
@@ -60,7 +60,7 @@ def test_answer_requires_exactly_one_true_option() -> None:
 
 def test_criterion_text_is_generated_from_the_predicate() -> None:
     assert predict.criterion({"reach_within": 150, "zigzag_min": 3}, 1e-10) == \
-        "150 步內 f−f* < 10⁻¹⁰，且折返（相鄰兩步方向相反）≥ 3 次"
+        "150 步內 f−f* < 10⁻¹⁰，且折返（轉向超過 90°）≥ 3 次"
     assert predict.criterion({"status": ["max_iter", "converged", "stopped"]}, 1e-10) == "未發散"
 
 
@@ -70,13 +70,14 @@ def test_every_question_has_one_build_time_answer(page: Path) -> None:
     meta = build.split_frontmatter(page.read_text("utf-8"))[0]
     qs = build.predict_data(page.stem, meta["lab"], meta["predict"])
     assert 2 <= len(qs) <= 3
-    for q in qs:
+    for raw, q in zip(meta["predict"], qs):
         assert 0 <= q["answer"] < len(q["options"])
-        sub = next(t for t in q["scenario"]["traces"] if t["algo"] == q["subject"])
-        sc = q["scenario"]["spec"]
-        fstar = make_problem(sc["problem"], **sc["problem_params"]).fstar
+        spec = build.scenario_spec(meta["lab"], raw["scenario"])
+        fstar = spec.pop("fstar")
+        sub = next(t for t in build.api.traces(spec) if t["algo"] == q["subject"])
         m = predict.measure(sub, fstar, meta["lab"].get("reach_tol", 1e-10))
         assert m == q["measured"]
+        assert q["options"][q["answer"]] is not None
 
 
 @pytest.mark.parametrize("page", PAGES, ids=lambda p: p.stem)
@@ -129,3 +130,59 @@ def test_built_page_embeds_answers(tmp_path: Path) -> None:
         return json.loads(text.split('id="lab-data">', 1)[1].split("</script>", 1)[0])
     assert [q["id"] for q in lab("gd")["predict"]] == ["gd#p1", "gd#p2", "gd#p3"]
     assert "predict" not in lab("bfgs")
+
+
+GOOD_Q = {"prompt": "?", "explain": ".", "scenario": {"params": {"gd": {"lr": 0.21}}},
+          "options": [{"label": "a", "when": {"status": "diverged"}},
+                      {"label": "b", "when": {"reach_within": 150}}]}
+
+
+@pytest.mark.parametrize("patch, match", [
+    ({"scenario": {"problem_param": {"kappa": 10}}}, "unknown scenario key"),
+    ({"scenario": {"params": {"gd": {"eta": 0.21}}}}, "unknown gd parameter key"),
+    ({"options": [{"label": "a", "when": {"status": "blew_up"}},
+                  {"label": "b", "when": {"reach_within": 150}}]}, "status must be one or more"),
+    ({"options": [{"label": "a", "when": {"status": "diverged"}},
+                  {"label": "b", "when": {"reach_within": "150"}}]}, "reach_within needs a number"),
+    ({"show": ["gd", "bfgs"]}, "show:"),
+    ({"subject": "bfgs"}, "subject 'bfgs' is not in this lab"),
+    ({"hint": "x"}, "unknown question key"),
+    ({"options": [{"label": "a", "when": {"status": "diverged"}, "correct": True},
+                  {"label": "b", "when": {"reach_within": 150}}]}, "unknown option key"),
+])
+def test_malformed_questions_fail_with_their_id(patch: dict, match: str) -> None:
+    q = GOOD_Q | patch
+    build.predict_data("gd", meta_of("gd")["lab"], [GOOD_Q])   # the base question is fine
+    with pytest.raises(ValueError, match=f"gd#p2: .*{match}"):
+        build.predict_data("gd", meta_of("gd")["lab"], [GOOD_Q, q])
+
+
+def test_predict_without_lab_fails() -> None:
+    with pytest.raises(ValueError, match="needs a lab"):
+        build.attach_predict("simplex", {"predict": [GOOD_Q]}, None)
+
+
+def test_default_traces_are_referenced_and_others_rounded() -> None:
+    """momentum#p2 is the page default: no trace is embedded twice."""
+    meta = meta_of("momentum")
+    lab = build.lab_data(meta["lab"])
+    qs = build.predict_data("momentum", meta["lab"], meta["predict"], lab)
+    assert all(t == {"algo": t["algo"], "same": True} for t in qs[1]["scenario"]["traces"])
+    t = next(t for t in qs[0]["scenario"]["traces"] if t["algo"] == "momentum")
+    assert "same" not in t
+    assert all(float(f"{v:.6g}") == v for v in t["fs"])
+
+
+def test_momentum_beta_numbers_quoted_in_q3() -> None:
+    """The explanation of momentum#p3 quotes these measured step counts."""
+    from optlab.trace import run_named
+
+    def reach(lr: float, beta: float) -> int | None:
+        t = run_named("momentum", "quadratic", {"kappa": 50}, {"lr": lr, "beta": beta}, None, 150)
+        return next((k for k, f in enumerate(t["fs"]) if f < 1e-10), None)
+    assert (reach(0.02, 0.76), reach(0.02, 0.8), reach(0.061, 0.57)) == (88, 117, 57)
+    for beta in (0.5, 0.55, 0.6, 0.65, 0.85, 0.9, 0.95):
+        assert reach(0.02, beta) is None, beta
+    explain = meta_of("momentum")["predict"][2]["explain"]
+    for s in ("β = 0.76 第 88 步", "β = 0.8 第 117 步", "η = 4/(√L + √μ)² ≈ 0.061", "第 57 步"):
+        assert s in explain

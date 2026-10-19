@@ -13,9 +13,9 @@ Every key of `when` must hold (logical AND). Keys:
     reach_within      int: f - f* < reach_tol at some step k <= N
     not_reach_within  int: no step k <= N with f - f* < reach_tol
                       (a diverged run never reaches)
-    zigzag_min/max    int: number of turns sharper than 90 degrees, i.e. steps
-                      whose direction is opposite to the previous step's
-                      (dot product < 0), inclusive bounds
+    zigzag_min/max    int: number of turns sharper than 90 degrees (a step whose
+                      dot product with the previous step is negative),
+                      inclusive bounds
     rises_min/max     int: number of steps where f went up, inclusive bounds
     final_gap_below   float: last f - f* < X
     final_gap_above   float: last f - f* >= X
@@ -91,7 +91,7 @@ def criterion(when: dict, reach_tol: float) -> str:
         "status": status,
         "reach_within": lambda v: f"{v} 步內 f−f* < {tol}",
         "not_reach_within": lambda v: f"{v} 步內未達 f−f* < {tol}",
-        "zigzag_min": lambda v: f"折返（相鄰兩步方向相反）≥ {v} 次",
+        "zigzag_min": lambda v: f"折返（轉向超過 90°）≥ {v} 次",
         "zigzag_max": lambda v: f"折返 ≤ {v} 次",
         "rises_min": lambda v: f"f 上升的步數 ≥ {v}",
         "rises_max": lambda v: "f 每步都不上升" if v == 0 else f"f 上升的步數 ≤ {v}",
@@ -115,13 +115,26 @@ def summary(m: Measure, reach_tol: float) -> str:
     return f"{reach} · 折返 {m['zigzag']} 次 · f 上升 {m['rises']} 步"
 
 
-def check(when: dict, m: Measure) -> bool:
-    """True when every condition of `when` holds for the measured trace."""
+def validate(when: dict) -> None:
+    """Raise ValueError on unknown keys, unknown statuses or non-numeric bounds."""
+    if not isinstance(when, dict) or not when:
+        raise ValueError(f"predicate must be a non-empty mapping, got {when!r}")
     unknown = set(when) - set(CHECKS)
     if unknown:
         raise ValueError(f"unknown predicate key(s): {sorted(unknown)}")
-    if not when:
-        raise ValueError("empty predicate")
+    for k, v in when.items():
+        if k == "status":
+            names = [v] if isinstance(v, str) else v
+            if not isinstance(names, list) or not names or \
+                    any(s not in STATUS_TEXT for s in names):
+                raise ValueError(f"status must be one or more of {sorted(STATUS_TEXT)}, got {v!r}")
+        elif isinstance(v, bool) or not isinstance(v, (int, float)):
+            raise ValueError(f"{k} needs a number, got {v!r}")
+
+
+def check(when: dict, m: Measure) -> bool:
+    """True when every condition of `when` holds for the measured trace."""
+    validate(when)
     return all(CHECKS[k](m, v) for k, v in when.items())
 
 
