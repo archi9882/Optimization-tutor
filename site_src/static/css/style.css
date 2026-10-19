@@ -431,3 +431,47 @@ table.tableau td.uncov { background: color-mix(in srgb, var(--s4) 10%, transpare
 .btn-primary { background: #1f63b8; border-color: #1f63b8; text-decoration: none; }
 /* ---- P0: 重設 in LP / combo labs (keeps .btn-small sizing on phones) ---- */
 .lp-lab .widget-row .btn.btn-small { padding: 3px 10px; font-size: 13px; }
+/* ---- predict before play (predict.js; frontmatter predict:) ---- */
+.predict { border-left: 3px solid var(--accent); }
+.predict-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 6px; }
+.predict-kicker { font-weight: 650; font-size: 14px; color: var(--accent-ink); }
+.predict-count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.predict-skip { margin-left: auto; }
+.predict .link-btn {
+  background: none; border: 0; padding: 4px 2px; font: inherit; font-size: 14px;
+  color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+.predict-q { border: 0; margin: 0; padding: 0; min-width: 0; }
+.predict-prompt { padding: 0; font-size: 16px; color: var(--ink); line-height: 1.6; margin-bottom: 8px; }
+.predict-options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.widget .predict-option {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--ink);
+  border: 1px solid var(--border); background: var(--page); border-radius: 8px;
+  padding: 7px 12px; min-height: 44px; box-sizing: border-box; font-size: 15px;
+}
+.predict-option input { accent-color: var(--accent); margin: 0; width: 18px; height: 18px; flex: none; }
+.predict-option:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.predict-option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.predict-q:disabled .predict-option { cursor: default; opacity: .75; }
+.predict-q:disabled .predict-option:has(input:checked) { opacity: 1; }
+.predict-actions { gap: 8px 14px; }
+.predict .btn { color: inherit; }
+.predict .btn-primary { color: #fff; }
+.predict-reveal { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--grid); }
+.predict-reveal:focus { outline: none; }
+.predict-reveal:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.predict-reveal p { margin: 0 0 8px; }
+.predict-verdict strong { margin-right: 2px; }
+.predict-verdict.good strong { color: var(--good); }
+.predict-verdict.bad strong { color: var(--bad); }
+.predict-measured { font-variant-numeric: tabular-nums; }
+/* Hide the answer (default plots and result lines) until the learner predicts. */
+.predict-hidden .lab-plots, .predict-hidden .algo-result, .predict-hidden .step-note {
+  filter: blur(7px); opacity: .45; pointer-events: none; user-select: none;
+}
+.predict-hidden .lab-plots { position: relative; }
+@media (max-width: 480px) {
+  .predict-options { flex-direction: column; }
+  .widget .predict-option { width: 100%; }
+  .predict-skip { margin-left: 0; }
+}

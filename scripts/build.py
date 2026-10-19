@@ -31,7 +31,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from optlab import OPTIMIZERS, api, demos, lp as lpmod  # noqa: E402
+from optlab import OPTIMIZERS, api, demos, make_problem, lp as lpmod, predict as predmod  # noqa: E402
 from optlab.optimizers import N_ITER, PROBLEM_PARAMS, Param  # noqa: E402
 from optlab.exercises import EXERCISES  # noqa: E402
 
@@ -144,6 +144,89 @@ def lab_data(cfg: dict) -> dict:
     if "problems" in cfg:  # problem menu of this page (default: the unconstrained zoo)
         assert cfg["problem"] in cfg["problems"], "lab.problem must be in lab.problems"
         out["problems"] = cfg["problems"]
+    return out
+
+
+def _on_grid(what: str, values: list, v: float) -> None:
+    """Fail the build unless v is exactly one of a slider's values."""
+    if not any(abs(x - v) <= 1e-12 * max(1.0, abs(v)) for x in values):
+        near = min(values, key=lambda x: abs(x - v))
+        raise ValueError(f"{what} = {v} is not on its slider grid (nearest {near})")
+
+
+def scenario_spec(lab_cfg: dict, sc: dict) -> dict:
+    """Full lab spec of one prediction scenario, every value checked on the grids.
+
+    sc = {"problem", "problem_params", "params": {algo: {...}}, "n_iter", "x0"?}
+    Unset fields fall back to the page's lab settings; algorithms keep the
+    page's parameters unless the scenario overrides them.
+    """
+    algos = lab_cfg["algos"] + lab_cfg.get("compare", [])
+    problem = sc.get("problem", lab_cfg["problem"])
+    menu = lab_cfg.get("problems", ["quadratic", "rosenbrock", "himmelblau"])
+    if problem not in menu:
+        raise ValueError(f"scenario problem {problem!r} is not in the lab's menu {menu}")
+    same = problem == lab_cfg["problem"]
+    pparams = dict(lab_cfg.get("problem_params", {}) if same else {})
+    pparams |= sc.get("problem_params", {})
+    sliders = {p.name: p for p in PROBLEM_PARAMS.get(problem, [])}
+    for k, v in pparams.items():
+        if k not in sliders:
+            raise ValueError(f"problem {problem!r} has no slider {k!r}")
+        _on_grid(f"{problem}.{k}", sliders[k].values(), v)
+    for a in sc.get("params", {}):
+        if a not in algos:
+            raise ValueError(f"scenario sets params of {a!r}, which is not in this lab")
+    runs = []
+    for a in algos:
+        merged = OPTIMIZERS[a].defaults() | lab_cfg.get("params", {}).get(a, {}) \
+            | sc.get("params", {}).get(a, {})
+        for p in OPTIMIZERS[a].params:
+            _on_grid(f"{a}.{p.name}", p.values(), merged[p.name])
+        runs.append({"algo": a, "params": merged})
+    n_iter = sc.get("n_iter", lab_cfg.get("n_iter", 150))
+    _on_grid("n_iter", N_ITER.values(), n_iter)
+    prob = make_problem(problem, **pparams)
+    x0 = list(sc["x0"]) if "x0" in sc else list(prob.x0)
+    return {"problem": problem, "problem_params": pparams, "n_iter": n_iter,
+            "x0": x0, "runs": runs, "fstar": prob.fstar}
+
+
+def predict_data(algo_id: str, lab_cfg: dict, questions: list[dict]) -> list[dict]:
+    """Run every prediction scenario and decide its answer from the trace.
+
+    Raises (failing the build) when a value is off its slider grid, a
+    predicate is malformed, or not exactly one option holds.
+    """
+    reach_tol = lab_cfg.get("reach_tol", 1e-10)
+    out = []
+    for n, q in enumerate(questions, 1):
+        qid = f"{algo_id}#p{n}"
+        try:
+            spec = scenario_spec(lab_cfg, q["scenario"])
+            fstar = spec.pop("fstar")
+            subject = q.get("subject", lab_cfg["algos"][0])
+            shown = q.get("show", [subject])
+            if not 2 <= len(q["options"]) <= 4:
+                raise ValueError("a question needs 2 to 4 options")
+            traces = api.traces(spec)
+            sub = next(t for t in traces if t["algo"] == subject)
+            m = predmod.measure(sub, fstar, reach_tol)
+            ans = predmod.answer(q["options"], m)
+        except (ValueError, KeyError, StopIteration) as err:
+            raise ValueError(f"{qid}: {err}") from err
+        out.append({
+            "id": qid, "prompt": q["prompt"], "explain": q["explain"],
+            "subject": subject, "subject_name": OPTIMIZERS[subject].name,
+            "answer": ans, "measured": m,
+            "summary": predmod.summary(m, reach_tol),
+            "options": [{"label": o["label"],
+                         "criterion": predmod.criterion(o["when"], reach_tol)}
+                        for o in q["options"]],
+            "scenario": {"spec": spec, "enabled": shown, "traces": traces,
+                         "same_grid": spec["problem"] == lab_cfg["problem"] and
+                         spec["problem_params"] == lab_cfg.get("problem_params", {})},
+        })
     return out
 
 
@@ -285,6 +368,9 @@ def build(out: Path = OUT, vendor: Path | None = None) -> None:
         a["n_cards"] = len(recall)
         all_cards.extend(recall)
         lab = lab_data(meta["lab"]) if "lab" in meta else None
+        if "predict" in meta:
+            assert lab, f"{a['id']}: predict: needs a lab:"
+            lab["predict"] = predict_data(a["id"], meta["lab"], meta["predict"])
         lpd = lp_data(meta["lp"]) if "lp" in meta else None
         combod = combo_data(meta["combo"]) if "combo" in meta else None
         practice = practice_data(meta["practice"]) if "practice" in meta \

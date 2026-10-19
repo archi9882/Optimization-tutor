@@ -251,7 +251,16 @@ function play() {
   last = performance.now(); acc = 0;
   requestAnimationFrame(tick);
 }
-function pause() { st.playing = false; playBtn.textContent = "▶ 播放"; }
+// Callers of playThrough() wait for the next pause: the end of the run, the
+// pause button, or any edit that recomputes (finished tells which).
+let pauseWaiters = [];
+function pause() {
+  st.playing = false; playBtn.textContent = "▶ 播放";
+  const waiters = pauseWaiters;
+  pauseWaiters = [];
+  for (const fn of waiters) fn(!Number.isFinite(st.frame));
+}
+function playThrough() { return new Promise((resolve) => { pauseWaiters.push(resolve); play(); }); }
 function stepOnce() {
   pause();
   const cur = Number.isFinite(st.frame) ? st.frame : -1;
@@ -320,7 +329,41 @@ renderProblemNote();
 contour.setGrid(st.grid);
 redraw();
 warmUp().catch(() => {});
-// Play once the first time the lab scrolls into view.
-new IntersectionObserver((entries, obs) => {
-  if (entries.some((e) => e.isIntersecting)) { obs.disconnect(); play(); }
-}, { threshold: 0.4 }).observe(mount);
+// Prediction questions (frontmatter predict:): put a scenario computed at
+// build time on the lab. The traces are embedded; only a scenario on another
+// problem or problem parameter needs Python for its contour grid.
+async function applyScenario(sc) {
+  clearTimeout(timer);
+  gridDirty = false;
+  const version = ++st.version;
+  pause();
+  const grid = sc.same_grid ? data.grid : await call("grid", sc.spec);
+  if (version !== st.version) throw new Error("superseded");
+  st.spec = structuredClone(sc.spec);
+  st.params = Object.fromEntries(sc.spec.runs.map((r) => [r.algo, { ...r.params }]));
+  st.enabled = new Set(sc.enabled);
+  st.traces = sc.traces;
+  st.grid = grid;
+  st.frame = Infinity;
+  problemSel.value = st.spec.problem;
+  iterSlider.setValue(st.spec.n_iter);
+  renderProblemParams();
+  renderRows();
+  contour.setGrid(grid);
+  renderProblemNote();
+  frameOut.textContent = "";
+  redraw();
+}
+
+// Play once the first time the lab scrolls into view (pages with prediction
+// questions wait for the learner to predict or skip instead).
+function autoplay() {
+  new IntersectionObserver((entries, obs) => {
+    if (entries.some((e) => e.isIntersecting)) { obs.disconnect(); play(); }
+  }, { threshold: 0.4 }).observe(mount);
+}
+if (data.predict) {
+  import("./predict.js")
+    .then((m) => m.mountPredict(mount, data.predict, { applyScenario, playThrough, pause, play }))
+    .catch(autoplay);
+} else autoplay();
