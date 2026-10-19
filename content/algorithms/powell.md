@@ -15,7 +15,7 @@ predict:
       - {label: "不到 300 次", when: {evals_below: 300}}
       - {label: "300～999 次", when: {evals_above: 300, evals_below: 1000}}
       - {label: "1000 次以上", when: {evals_above: 1000}}
-    explain: "1803 次：15 輪共 44 次一維搜尋，每次一維搜尋平均約 41 次 f 計算。輪數少不等於便宜；Nelder-Mead 要 126 步，卻只用 245 次 f 計算。"
+    explain: "1803 次：15 輪共 44 次一維搜尋（最後一輪沒有移動，第 3 次搜尋省略），每次一維搜尋平均約 41 次 f 計算。輪數少不等於便宜；Nelder-Mead 要 126 步，卻只用 245 次 f 計算。"
   - id: p2
     prompt: "換到二次碗、κ = 10、旋轉 30°。Powell 法要幾輪才達到 f − f* < 10⁻⁸？"
     scenario: {problem: quadratic, problem_params: {kappa: 10, theta_deg: 30}}

@@ -31,7 +31,7 @@ predict:
     show: [frank_wolfe, projected_gradient]
     options:
       - {label: "降到 0.0025 以下（比 1/k 快）", when: {final_dist_below: 0.0025}}
-      - {label: "0.0025～0.014（約按 1/k 縮小）", when: {final_dist_above: 0.0025, final_dist_below: 0.014}}
+      - {label: "0.0025～0.014（比 k = 100 時小了 1.5～8 倍）", when: {final_dist_above: 0.0025, final_dist_below: 0.014}}
       - {label: "0.014 以上（幾乎沒進步）", when: {final_dist_above: 0.014}}
     explain: "0.0070，剛好約 1/3：步數 3 倍、距離縮成 1/3，是 O(1/k) 的速度。每步朝頂點走 γₖ = 2/(k + 2) 的比例，來回拉扯的幅度只按 1/k 縮小；同圖的投影梯度第 53 步就停止，距離 1.2 × 10⁻¹²。"
   - id: p4
