@@ -54,7 +54,7 @@ export function mountPredict(mount, questions, lab) {
   const nav = h("div", { class: "predict-nav", role: "group", "aria-label": "預測題" });
   const skipBtn = h("button", { type: "button", class: "link-btn predict-skip", onclick: () => skip() }, "直接看動畫");
   const head = h("div", { class: "predict-head" },
-    h("span", { class: "predict-kicker", id: `${uid}-title` }, "先預測，再看動畫"), nav, skipBtn);
+    h("span", { class: "predict-kicker", id: `${uid}-title` }, h("span", { class: "predict-icon", "aria-hidden": "true" }, "?"), "預測挑戰：先猜，再看動畫"), nav, skipBtn);
   const legend = h("legend", { class: "predict-prompt" });
   const choices = h("div", { class: "predict-options" });
   const fieldset = h("fieldset", { class: "predict-q" }, legend, choices);
@@ -66,8 +66,15 @@ export function mountPredict(mount, questions, lab) {
   const reveal = h("div", { class: "predict-reveal", tabindex: "-1", hidden: "" });
   const body = h("div", { class: "predict-body" }, fieldset, prev, actions, reveal);
   const reopen = h("button", { type: "button", class: "link-btn", hidden: "", onclick: () => resume() }, "回到預測題");
-  const card = h("section", { class: "widget predict", "aria-labelledby": `${uid}-title` }, head, body, reopen);
+  const card = h("section", { class: "widget predict", id: "predict", "aria-labelledby": `${uid}-title` }, head, body, reopen);
   mount.before(card);
+  // The card sits mid-page (in 動畫演示); a button in the page header points to it.
+  const header = document.querySelector(".algo-head");
+  if (header && !document.querySelector(".predict-teaser")) {
+    header.append(h("a", { class: "predict-teaser", href: "#predict" },
+      h("span", { class: "predict-icon", "aria-hidden": "true" }, "?"),
+      `本頁有 ${questions.length} 題預測挑戰：先猜結果，再看動畫 →`));
+  }
   const labWidget = mount.querySelector(".lab");
   const plotsEl = mount.querySelector(".lab-plots");
   if (plotsEl) plotsEl.dataset.cover = "先預測，再看結果";

@@ -492,3 +492,22 @@ table.tableau td.uncov { background: color-mix(in srgb, var(--s4) 10%, transpare
   .widget .predict-option { width: 100%; }
   .predict-skip { margin-left: 0; }
 }
+/* ---- predict: make the challenge stand out (owner feedback at HP3) ---- */
+.widget.predict {
+  border: 2px solid var(--s4); border-left-width: 6px;
+  background: var(--warn-bg);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--s4) 18%, transparent);
+  scroll-margin-top: 16px;
+}
+.predict .predict-kicker { color: var(--warn-ink); font-size: 16px; display: inline-flex; align-items: center; gap: 8px; }
+.predict-icon {
+  display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 999px;
+  background: var(--s4); color: #1a1300; font-weight: 800; font-size: 14px; line-height: 1;
+}
+.predict-teaser {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 10px;
+  padding: 8px 14px; border-radius: 999px; text-decoration: none; font-weight: 650;
+  background: var(--warn-bg); color: var(--warn-ink); border: 2px solid var(--s4);
+}
+.predict-teaser:hover { filter: brightness(1.05); }
+.predict-teaser:focus-visible { outline: 2px solid var(--s4); outline-offset: 2px; }
