@@ -6,6 +6,30 @@ lp:
   sliders: [c1, c2]
   speed: 0.8
 practice: cutting_plane
+predict:
+  - id: p1
+    prompt: "Gomory 割會把原可行域裡的整數點切掉嗎？"
+    scenario: {}
+    options:
+      - {label: "不會，一個也不會", when: {cut_points_max: 0}}
+      - {label: "會切掉一些", when: {cut_points_min: 1}}
+    explain: "每條 Gomory 割都由「變數是整數」推出，所有可行的整數點都滿足它，只削掉分數區域。實測 3 條割之後，原可行域的 13 個整數點一個也沒被割掉。"
+  - id: p2
+    prompt: "預設 c = (5, 4)：從 LP 最優 (3, 1.5) 開始，要加幾條割才得到整數解？"
+    scenario: {}
+    options:
+      - {label: "1 條", when: {cuts_max: 1}}
+      - {label: "2～3 條", when: {cuts_min: 2, cuts_max: 3}}
+      - {label: "4 條以上", when: {cuts_min: 4}}
+    explain: "割₁ 把點推到 (3.33, 1)，割₂ 推到 (2.67, 1.67)，割₃ x₁ + x₂ ≤ 4 才到整數點 (4, 0)。一條割只保證切掉目前的分數點，常常要好幾條。"
+  - id: p3
+    prompt: "c = (6, 2)：要加幾條割？"
+    scenario: {preset_params: {c1: 6, c2: 2}}
+    options:
+      - {label: "0 條", when: {cuts_max: 0}}
+      - {label: "1 條", when: {cuts_min: 1, cuts_max: 1}}
+      - {label: "2 條以上", when: {cuts_min: 2}}
+    explain: "LP 最優 (4, 0) 已經是整數，單純形法 1 次樞紐後就停，不需要任何割。"
 ---
 
 ## 定義

@@ -14,8 +14,10 @@ spec = importlib.util.spec_from_file_location("build", ROOT / "scripts" / "build
 build = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(build)
 
+# Pages whose questions run on the continuous lab (lab:); LP and combinatorial
+# pages (lp:, combo:) are tested in the "widgets" section at the end.
 PAGES = [p for p in sorted((ROOT / "content" / "algorithms").glob("*.md"))
-         if "predict" in build.split_frontmatter(p.read_text("utf-8"))[0]]
+         if {"predict", "lab"} <= set(build.split_frontmatter(p.read_text("utf-8"))[0])]
 
 
 def meta_of(algo: str) -> dict:
@@ -518,3 +520,341 @@ def test_every_page_question_has_an_id() -> None:
         ids = [q.get("id") for q in meta.get("predict", [])]
         assert all(isinstance(i, str) and i.startswith("p") for i in ids), md.name
         assert len(ids) == len(set(ids)), md.name
+
+
+# ---------- LP / integer / combinatorial widgets (lp.js, combo.js) ----------
+
+WIDGET_PAGES = {
+    "simplex": ["2 次", "3 次以上", "頂點 (4, 3)"],
+    "dual-simplex": ["一路上升", "1 次", "(7, 0)：只用肥料甲"],
+    "lp-interior-point": ["不會，每一步都嚴格在內部", "差不到 0.001", "邊的中間 (3, 4.5)"],
+    "qp-active-set": ["灌溉水那條邊的中間 (3, 4.5)", "2 步"],
+    "branch-and-bound": ["(4, 0)", "4～6 個", "只有 1 個", "(3, 1)"],
+    "cutting-plane": ["不會，一個也不會", "2～3 條", "0 條"],
+    "dynamic-programming": ["60 以上", "1～2", "兩個月都放 2 以上"],
+    "greedy": ["會，跳過 1～3 條", "是，等於最小生成樹"],
+    "hungarian": ["要調整矩陣 1 次", "相同"],
+    "two-opt": ["不會，每一步都變短", "4～6 次", "不是，比最短的長"],
+    "tabu-search": ["能，而且找到最短的路線", "3 條以下", "4～10 條"],
+}
+
+
+def widget_of(page: str) -> tuple[str, dict]:
+    meta = meta_of(page)
+    kind = "lp" if "lp" in meta else "combo"
+    return kind, meta[kind]
+
+
+def wq(page: str) -> list[dict]:
+    """The page's built questions (with its default data, as the build does)."""
+    kind, cfg = widget_of(page)
+    default = build.lp_data(cfg) if kind == "lp" else build.combo_data(cfg)
+    return build.widget_predict_data(page, kind, cfg, meta_of(page)["predict"], default)
+
+
+def test_every_lp_and_combo_page_has_questions() -> None:
+    """Phase B covers the 11 LP / integer / combinatorial pages (1 to 5 questions each)."""
+    pages = {p.stem for p in (ROOT / "content" / "algorithms").glob("*.md")
+             if "predict" in meta_of(p.stem) and ("lp" in meta_of(p.stem) or "combo" in meta_of(p.stem))}
+    assert pages == set(WIDGET_PAGES)
+    for page in pages:
+        assert 1 <= len(meta_of(page)["predict"]) <= 5, page
+
+
+@pytest.mark.parametrize("page", sorted(WIDGET_PAGES))
+def test_widget_known_outcomes(page: str) -> None:
+    """Each page's answers, decided by running the widget's method at build time."""
+    qs = wq(page)
+    assert [q["options"][q["answer"]]["label"] for q in qs] == WIDGET_PAGES[page]
+    assert [q["id"] for q in qs] == [f"{page}#p{n}" for n in range(1, len(qs) + 1)]
+
+
+@pytest.mark.parametrize("page", sorted(WIDGET_PAGES))
+def test_widget_scenarios_are_on_the_pages_sliders(page: str) -> None:
+    """Only the page's own sliders are moved, to positions the range input can take."""
+    kind, cfg = widget_of(page)
+    sliders = build.widget_sliders(kind, cfg)
+    key = build.WIDGET_SCENARIO_KEYS[kind]
+    for q in meta_of(page)["predict"]:
+        for name, v in q.get("scenario", {}).get(key, {}).items():
+            sl = sliders[name]
+            assert sl["lo"] <= v <= sl["hi"]
+            assert ((v - sl["lo"]) / sl["step"]).is_integer(), (page, name, v)
+
+
+def test_widget_measure_matches_embedded_and_default_is_not_embedded() -> None:
+    """measured is what the predicates saw; default runs are referenced, LP grids dropped."""
+    from optlab import api, lp as lpmod
+    for page in WIDGET_PAGES:
+        kind, cfg = widget_of(page)
+        for q in wq(page):
+            spec = q["scenario"]["spec"]
+            res = api.lp_lab(spec) if kind == "lp" else api.combo_lab(spec)
+            m = (predict.measure_lp(res, lpmod.make_lp(spec["preset"], **spec["preset_params"]))
+                 if kind == "lp" else predict.measure_combo(res))
+            assert m == q["measured"], q["id"]
+            emb = q["scenario"]["result"]
+            default = (cfg.get("preset_params", {}) == spec.get("preset_params", {}) if kind == "lp"
+                       else cfg.get("params", {}) == spec["params"])
+            assert emb.get("same", False) == default, q["id"]
+            if not default:
+                assert "grid" not in emb and len(emb["steps"]) == len(res["steps"])
+                assert q["scenario"]["same_grid"] is True
+
+
+def test_lp_js_grid_formula_reproduces_objective_grid() -> None:
+    """lp.js withGrid(): z = sign (c1 x + c2 y) on the default grid's x, y (linear presets)."""
+    from optlab import lp as lpmod
+    g = lpmod.objective_grid(lpmod.make_lp("farm"))
+    other = lpmod.objective_grid(lpmod.make_lp("farm", c1=1.0, c2=1.0))
+    z = [[g["sign"] * (1.0 * x + 1.0 * y) for x in g["x"]] for y in g["y"]]
+    assert other["x"] == g["x"] and other["y"] == g["y"] and g["linear"]
+    assert all(abs(a - b) < 1e-12 for ra, rb in zip(z, other["z"]) for a, b in zip(ra, rb))
+
+
+@pytest.mark.parametrize("page, sc, match", [
+    ("simplex", {"preset_params": {"c1": 1.25}}, "not on its slider"),
+    ("simplex", {"preset_params": {"c1": 8.5}}, "not on its slider"),
+    ("simplex", {"preset_params": {"c3": 1}}, "unknown scenario preset_params key"),
+    ("simplex", {"params": {"c1": 1}}, "unknown scenario key"),
+    ("qp-active-set", {"preset_params": {"c1": 1}}, "unknown scenario preset_params key"),
+    ("tabu-search", {"params": {"tenure": 9}}, "not on its slider"),
+    ("tabu-search", {"params": {"tenure": 2.5}}, "not on its slider"),
+    ("tabu-search", {"params": {"iters": 40}}, "unknown scenario params key"),
+    ("two-opt", {"params": {"max_steps": 2}}, "unknown scenario params key"),
+])
+def test_widget_scenarios_off_the_sliders_fail(page: str, sc: dict, match: str) -> None:
+    kind, cfg = widget_of(page)
+    with pytest.raises(ValueError, match=match):
+        build.widget_spec(kind, cfg, sc)
+
+
+WQ = {"id": "p1", "prompt": "?", "explain": ".",
+      "options": [{"label": "a", "when": {"pivots_max": 2}}, {"label": "b", "when": {"pivots_min": 3}}]}
+
+
+@pytest.mark.parametrize("patch, match", [
+    ({"options": [{"label": "a", "when": {"nodes_max": 2}},
+                  {"label": "b", "when": {"pivots_min": 3}}]}, "nodes_max does not apply to method 'simplex'"),
+    ({"options": [{"label": "a", "when": {"reach_within": 2}},
+                  {"label": "b", "when": {"pivots_min": 3}}]}, "unknown predicate key.*lp widget"),
+    ({"options": [{"label": "a", "when": {"pivots_max": 2.5}},
+                  {"label": "b", "when": {"pivots_min": 3}}]}, "needs a whole number"),
+    ({"options": [{"label": "a", "when": {"final_point": [2]}},
+                  {"label": "b", "when": {"pivots_min": 3}}]}, r"final_point needs \[x1, x2\]"),
+    ({"options": [{"label": "a", "when": {"z_trend": "rising"}},
+                  {"label": "b", "when": {"pivots_min": 3}}]}, "z_trend must be one of"),
+    ({"options": [{"label": "a", "when": {"pivots_min": 3, "pivots_max": 2}},
+                  {"label": "b", "when": {"pivots_min": 3}}]}, "leave no possible run"),
+    ({"options": [{"label": "a", "when": {"pivots_max": 3}},
+                  {"label": "b", "when": {"pivots_min": 2}}]}, "expected exactly one true option, got 2"),
+    ({"scenario": {"preset_params": {"c1": 0.25}}}, "not on its slider"),
+    ({"hint": "x"}, "unknown question key"),
+])
+def test_malformed_widget_questions_fail_with_their_id(patch: dict, match: str) -> None:
+    kind, cfg = widget_of("simplex")
+    build.widget_predict_data("simplex", kind, cfg, [WQ])        # the base question is fine
+    with pytest.raises(ValueError, match=f"simplex#p2: .*{match}"):
+        build.widget_predict_data("simplex", kind, cfg, [WQ, WQ | {"id": "p2"} | patch])
+
+
+def test_widget_questions_need_explicit_unique_ids() -> None:
+    kind, cfg = widget_of("simplex")
+    with pytest.raises(ValueError, match="explicit id"):
+        build.widget_predict_data("simplex", kind, cfg, [{k: v for k, v in WQ.items() if k != "id"}])
+    with pytest.raises(ValueError, match="duplicate question id"):
+        build.widget_predict_data("simplex", kind, cfg, [WQ, dict(WQ)])
+
+
+@pytest.mark.parametrize("kind, method, when, match", [
+    ("combo", "dp", {"length_below": 3.0}, "does not apply to method 'dp'"),
+    ("combo", "two_opt", {"total_above": 3.0}, "does not apply"),
+    ("combo", "kruskal", {"adjustments_max": 0}, "does not apply"),
+    ("combo", "tabu", {"reaches_optimum": 1}, "needs true or false"),
+    ("combo", "dp", {"release_min": {"9月": 1}}, "needs {month: whole number}"),
+    ("combo", "dp", {"release_min": {"3月": 1.5}}, "needs {month: whole number}"),
+    ("combo", "dp", {"release_min": {"3月": 2}, "release_max": {"3月": 1}}, "leave no possible run"),
+    ("combo", "hungarian", {"total_above": 40, "total_below": 40}, "leave no possible run"),
+    ("combo", "tabu", {"pivots_min": 1}, "unknown predicate key"),
+    ("lp", "simplex", {"stays_interior": True}, "does not apply"),
+    ("lp", "barrier", {"stays_interior": "yes"}, "needs true or false"),
+    ("lp", "barrier", {"pivots_min": 1}, "does not apply"),
+    ("lp", "branch_bound", {"cuts_min": 1}, "does not apply"),
+    ("lp", "simplex", {"final_z_below": "36"}, "needs a number"),
+    ("lp", "simplex", {}, "non-empty mapping"),
+])
+def test_widget_predicates_are_validated_strictly(kind: str, method: str, when: dict, match: str) -> None:
+    with pytest.raises(ValueError, match=match):
+        predict.validate_widget(when, kind, method)
+
+
+def _lp_measure(method: str, preset: str, **pp) -> dict:
+    from optlab import api, lp as lpmod
+    res = api.lp_lab({"method": method, "preset": preset, "preset_params": pp})
+    return predict.measure_lp(res, lpmod.make_lp(preset, **pp))
+
+
+def _combo_measure(method: str, **params) -> dict:
+    from optlab import api
+    return predict.measure_combo(api.combo_lab({"method": method, "params": params}))
+
+
+def test_lp_measures() -> None:
+    """Pivots, final point, z path; B&B answer is the incumbent; cuts keep integer points."""
+    m = _lp_measure("simplex", "farm", c1=1.0, c2=1.0)
+    assert (m["pivots"], m["x"], m["zs"], m["z_trend"]) == (3, [2.0, 6.0], [0.0, 4.0, 7.0, 8.0], "up")
+    assert predict.check_widget({"final_point": [2, 6], "pivots_min": 3, "final_z_above": 8}, m)
+    assert not predict.check_widget({"final_z_below": 8}, m)
+    m = _lp_measure("branch_bound", "greenhouse")
+    assert (m["nodes"], m["x"], m["z"], m["steps"]) == (5, [4.0, 0.0], 20.0, 4)
+    m = _lp_measure("cutting_plane", "greenhouse")
+    assert (m["cuts"], m["pivots"], m["int_points"], m["cut_points"]) == (3, 6, 13, 0)
+    m = _lp_measure("barrier", "farm")
+    assert m["steps"] == 27 and 0 < m["min_slack"] < 1e-3 and m["z_trend"] == "mixed"
+
+
+def test_cut_points_counts_a_cut_that_removes_an_integer_point() -> None:
+    """A fabricated cut x1 + x2 <= 3 removes the greenhouse points with x1 + x2 = 4."""
+    from optlab import api, lp as lpmod
+    res = api.lp_lab({"method": "cutting_plane", "preset": "greenhouse"})
+    res["steps"][-1]["cuts"] = [{"a": [1.0, 1.0], "b": 3.0, "label": "bad"}]
+    m = predict.measure_lp(res, lpmod.make_lp("greenhouse"))
+    assert m["cut_points"] == 3                    # (4, 0), (3, 1), (2, 2)
+    assert predict.check_widget({"cut_points_min": 1}, m)
+
+
+def test_combo_measures_against_brute_force() -> None:
+    """Optima come from enumeration (Prim for the MST), not from the methods' code."""
+    m = _combo_measure("dp")
+    assert (m["total"], m["optimum"], m["optimal"]) == (71.0, 71.0, True)
+    assert m["releases"] == {"3月": 1, "4月": 1, "5月": 1, "6月": 2, "7月": 3, "8月": 2}
+    m = _combo_measure("kruskal")
+    assert (m["considered"], m["rejected"], m["optimal"]) == (10, 2, True)
+    assert f"{m['total']:.3f}" == "11.944"
+    m = _combo_measure("hungarian")
+    assert (m["total"], m["optimum"], m["adjustments"], m["assignments"]) == (38.0, 38, 1, 120)
+    m = _combo_measure("two_opt")
+    assert (m["steps"], m["uphill"], m["distinct_tours"], m["optimal"]) == (4, 0, 5, False)
+    assert (f"{m['length']:.3f}", f"{m['optimum']:.3f}") == ("18.641", "18.195")
+    got = {t: _combo_measure("tabu", tenure=t)["distinct_tours"] for t in (0, 2, 3, 5)}
+    assert got == {0: 3, 2: 6, 3: 15, 5: 13}
+    assert all(_combo_measure("tabu", tenure=t)["optimal"] for t in range(9))
+
+
+def test_widget_criterion_text() -> None:
+    c = predict.criterion_widget
+    assert c({"pivots_min": 2, "pivots_max": 2}, "simplex") == "樞紐次數 = 2"
+    assert c({"nodes_min": 4, "nodes_max": 6}, "branch_bound") == "解過的節點數 4～6"
+    assert c({"final_z_above": 35.999, "final_z_below": 36}, "barrier") == "35.999 ≤ 目標值 z < 36"
+    assert c({"final_point": [4, 0]}, "branch_bound") == "找到的整數最優解是 (4, 0)"
+    assert c({"final_point": [3, 4.5]}, "barrier") == "最後的點在 (3, 4.5)（距離 < 10⁻³）"
+    assert c({"steps_min": 4, "steps_max": 6}, "two_opt") == "交換次數 4～6"
+    assert c({"reaches_optimum": True}, "kruskal") == "等於最小生成樹（Prim 獨立計算）"
+    assert c({"length_below": 18.64, "reaches_optimum": False}, "tabu") == \
+        "最佳路線長（km） < 18.64，且比窮舉找到的最優值差"
+    assert c({"release_min": {"6月": 2, "7月": 2}}, "dp") == "6月放水 ≥ 2、7月放水 ≥ 2"
+    assert c({"total_above": 60}, "dp") == "總收益 ≥ 60"
+
+
+def test_widget_summary_is_the_widgets_result() -> None:
+    """The reveal's measured line uses the widget's own numbers and formats."""
+    assert predict.summary_widget(_lp_measure("simplex", "farm")) == \
+        "2 次樞紐，停在 (2, 6)，z 依序 0 → 30 → 36"
+    assert predict.summary_widget(_lp_measure("dual_simplex", "fertilizer")) == \
+        "2 次樞紐，停在 (3, 2)，成本依序 0 → 8 → 12"
+    assert predict.summary_widget(_lp_measure("barrier", "farm")) == \
+        "27 步牛頓法後停在 (2.0000, 5.9999)，z = 35.9997；每個點都在可行域內部"
+    assert predict.summary_widget(_lp_measure("branch_bound", "greenhouse")) == \
+        "解了 5 個節點，整數最優解 (4, 0)，z = 20"
+    assert predict.summary_widget(_combo_measure("hungarian")) == \
+        "調整矩陣 1 次，總時數 38（120 種分派中最少為 38）"
+    assert predict.summary_widget(_combo_measure("tabu", tenure=0)).startswith(
+        "20 回合，最佳路線 18.195 km（窮舉最短 18.195 km）；路線變長 10 次，共走過 3 條不同路線")
+
+
+def _explain(page: str, n: int) -> str:
+    return meta_of(page)["predict"][n - 1]["explain"]
+
+
+def test_numbers_quoted_in_widget_explanations() -> None:
+    """Every number an explanation (or prompt) quotes, measured here."""
+    from optlab import api, combo as C
+    lp = lambda method, preset, **pp: api.lp_lab(  # noqa: E731
+        {"method": method, "preset": preset, "preset_params": pp})["steps"]
+    # simplex: paths and z
+    assert [s["x"] for s in lp("simplex", "farm")] == [[0, 0], [0, 6], [2, 6]]
+    assert "0 → 30 → 36" in _explain("simplex", 1) and "−5" in _explain("simplex", 1)
+    assert [s["x"] for s in lp("simplex", "farm", c1=1.0, c2=1.0)] == [[0, 0], [4, 0], [4, 3], [2, 6]]
+    assert [s["x"] for s in lp("simplex", "farm", c1=3.0, c2=2.0)] == [[0, 0], [4, 0], [4, 3]]
+    # dual simplex
+    st = lp("dual_simplex", "fertilizer", c1=1.0, c2=3.0)
+    assert [(s["x"], s["z"]) for s in st] == [([0, 0], 0), ([4, 0], 4), ([7, 0], 7)]
+    assert [(s["x"], s["z"]) for s in lp("dual_simplex", "fertilizer", c1=3.0, c2=1.0)][-1] == ([0, 8], 8)
+    # interior point: last point, smallest slack, gap and m·mu
+    m = _lp_measure("barrier", "farm")
+    st = lp("barrier", "farm")
+    mu, gap = st[-1]["mu"], 36 - m["z"]
+    assert (f"{mu:.1e}", f"{gap:.2e}", f"{5 * mu:.1e}", f"{m['min_slack']:.1e}") == \
+        ("1.5e-04", "3.05e-04", "7.6e-04", "1.0e-04")
+    for s in ("1.5 × 10⁻⁴",):
+        assert s in meta_of("lp-interior-point")["predict"][1]["prompt"]
+    for s in ("35.9997", "3.05 × 10⁻⁴", "7.6 × 10⁻⁴"):
+        assert s in _explain("lp-interior-point", 2)
+    assert "1.0 × 10⁻⁴" in _explain("lp-interior-point", 1) and "(2.0000, 5.9999)" in _explain("lp-interior-point", 1)
+    x = _lp_measure("barrier", "farm", c1=3.0, c2=2.0)["x"]
+    assert f"({x[0]:.4f}, {x[1]:.4f})" == "(3.0000, 4.5000)"
+    # active set: the blocked first step
+    st = lp("active_set", "farm_qp")
+    assert [f"{v:.3f}" for v in st[1]["x"]] == ["3.103", "4.345"]
+    # branch and bound: the order of the incumbents and the pruned bound
+    st = lp("branch_bound", "greenhouse")
+    assert [(n["x"], n["z"], n["action"]) for n in st[-1]["tree"]][2:] == \
+        [([3, 1], 19, "incumbent"), ([4, 0], 20, "incumbent"), ([2, 2], 18, "prune")]
+    st = lp("branch_bound", "greenhouse", c1=5.0, c2=5.0)
+    assert [n["action"] for n in st[-1]["tree"]] == ["branch", "branch", "incumbent", "prune", "prune"]
+    # cutting plane: the points after each cut
+    st = lp("cutting_plane", "greenhouse")
+    after = [s["x"] for s, nxt in zip(st, st[1:] + [None]) if nxt is None or nxt["phase"] == "cut"]
+    assert [[round(v, 2) for v in x] for x in after] == [[3, 1.5], [3.33, 1], [2.67, 1.67], [4, 0]]
+    assert len(lp("cutting_plane", "greenhouse", c1=6.0, c2=2.0)) == 2      # start + 1 pivot
+    # dynamic programming: release everything every month
+    s, total = C.RESERVOIR["s0"], 0.0
+    for t in range(6):
+        avail = s + C.RESERVOIR["inflow"][t]
+        total += C.reservoir_value(t, avail)
+        s = 0
+    assert total == 32.5 and "32.5" in meta_of("dynamic-programming")["predict"][0]["prompt"]
+    assert C.RESERVOIR["benefit"][:4] == [0, 4, 7, 9]
+    # Hungarian: the cover after the reduction, and the adjustment amount
+    st = api.combo_lab({"method": "hungarian"})["steps"]
+    assert (len(st[2]["rows"]), len(st[2]["cols"])) == (3, 1) and "最小值是 1" in st[2]["note"]
+    assert "4 條線（3 列 + 1 欄）" in _explain("hungarian", 1)
+    # 2-opt lengths
+    st = api.combo_lab({"method": "two_opt"})["steps"]
+    assert " → ".join(f"{s['length']:.2f}" for s in st) == "32.42 → 26.59 → 22.62 → 20.56 → 18.64"
+    assert "32.42 → 26.59 → 22.62 → 20.56 → 18.64" in _explain("two-opt", 1)
+    # tabu: first moves, the 2-tour cycle at tenure 0 and the 6-cycle at tenure 2
+    st = api.combo_lab({"method": "tabu", "params": {"tenure": 5}})["steps"]
+    assert [f"{s['length']:.3f}" for s in st[:3]] == ["18.641", "18.657", "18.195"]
+    tours = lambda ten: [predict._canon_tour(s["tour"]) for s in  # noqa: E731
+                         api.combo_lab({"method": "tabu", "params": {"tenure": ten}})["steps"]]
+    t0 = tours(0)
+    assert all(t0[k] == t0[k + 2] for k in range(1, len(t0) - 2))
+    t2 = tours(2)
+    assert all(t2[k] == t2[k + 6] for k in range(len(t2) - 6))
+    assert "6 回合" in _explain("tabu-search", 3) and "15 條" in _explain("tabu-search", 3)
+
+
+def test_built_widget_pages_embed_questions(tmp_path: Path) -> None:
+    """lp-data / combo-data carry the questions; lp.js reads its slider grid from the page."""
+    build.build(tmp_path)
+
+    def data(page: str, kind: str) -> dict:
+        text = (tmp_path / "algorithms" / f"{page}.html").read_text("utf-8")
+        return json.loads(text.split(f'id="{kind}-data">', 1)[1].split("</script>", 1)[0])
+    for page, answers in WIDGET_PAGES.items():
+        kind, _ = widget_of(page)
+        d = data(page, kind)
+        assert [q["options"][q["answer"]]["label"] for q in d["predict"]] == answers
+    assert data("simplex", "lp")["slider_defs"]["c1"] == build.LP_SLIDERS["c1"]
+    assert data("qp-active-set", "lp")["slider_defs"] == {}

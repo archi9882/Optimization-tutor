@@ -6,6 +6,31 @@ combo:
     - {name: tenure, label: "禁忌期（回合）", lo: 0, hi: 8, default: 5}
   speed: 1.2
 practice: tabu
+predict:
+  - id: p1
+    prompt: "預設禁忌期 5：從 2-opt 停下的 18.641 km 出發，20 回合內能找到更短的路線嗎？"
+    scenario: {}
+    options:
+      - {label: "不能，仍是 18.641 km", when: {length_above: 18.64}}
+      - {label: "能，但不是最短的", when: {length_below: 18.64, reaches_optimum: false}}
+      - {label: "能，而且找到最短的路線", when: {reaches_optimum: true}}
+    explain: "第 1 回合沒有能縮短的交換，禁忌搜尋仍選最不差的一步，路線變長到 18.657 km；第 2 回合就找到 18.195 km，和窮舉的最短相同。肯接受變差的一步，才能離開局部最優。"
+  - id: p2
+    prompt: "禁忌期調成 0（完全不記憶）。20 回合內共走過幾條不同的路線（含起點）？"
+    scenario: {params: {tenure: 0}}
+    options:
+      - {label: "3 條以下", when: {distinct_tours_max: 3}}
+      - {label: "4～10 條", when: {distinct_tours_min: 4, distinct_tours_max: 10}}
+      - {label: "11 條以上", when: {distinct_tours_min: 11}}
+    explain: "沒有記憶時，從 18.195 km 出發最不差的一步就是剛才那一步的反向，於是在 18.657 與 18.195 兩條路線之間來回，20 回合只走過 3 條（多的一條是起點）。這就是禁忌表要防止的循環。"
+  - id: p3
+    prompt: "禁忌期 2 呢？20 回合內走過幾條不同的路線？"
+    scenario: {params: {tenure: 2}}
+    options:
+      - {label: "3 條以下", when: {distinct_tours_max: 3}}
+      - {label: "4～10 條", when: {distinct_tours_min: 4, distinct_tours_max: 10}}
+      - {label: "11 條以上", when: {distinct_tours_min: 11}}
+    explain: "禁忌期 2 擋得住來回兩步的循環，卻擋不住較長的：路線每 6 回合回到原處，20 回合只走過 6 條。禁忌期 3 就增加到 15 條。"
 ---
 
 ## 定義

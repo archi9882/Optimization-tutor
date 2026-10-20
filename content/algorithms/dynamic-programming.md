@@ -4,6 +4,31 @@ combo:
   method: dp
   speed: 0.8
 practice: dynamic_programming
+predict:
+  - id: p1
+    prompt: "「每個月都把水放光」的總收益是 32.5。動態規劃的最優總收益是？"
+    scenario: {}
+    options:
+      - {label: "差不多（40 以下）", when: {total_below: 40}}
+      - {label: "40～60", when: {total_above: 40, total_below: 60}}
+      - {label: "60 以上", when: {total_above: 60}}
+    explain: "每月放光會在權重 1 的 3 月就把水用掉，夏天沒水可放。DP 把水留到 6、7 月（權重 3），總收益 71，是放光的兩倍多：只看眼前的貪婪放水不是最優。"
+  - id: p2
+    prompt: "3 月初蓄水 2、入流 3、收益權重 1。最優計畫在 3 月放多少水？"
+    scenario: {}
+    options:
+      - {label: "0（全部存起來）", when: {release_max: {"3月": 0}}}
+      - {label: "1～2", when: {release_min: {"3月": 1}, release_max: {"3月": 2}}}
+      - {label: "3 以上", when: {release_min: {"3月": 3}}}
+    explain: "收益邊際遞減：第 1 單位收益 4，之後每多放 1 單位只多 3、2、1。所以 3 月只放 1 單位，其餘存給權重 3 的夏天。"
+  - id: p3
+    prompt: "6、7 月的權重都是 3。最優計畫會把夏天的水集中在其中一個月放嗎？"
+    scenario: {}
+    options:
+      - {label: "集中在 6 月（7 月放 1 以下）", when: {release_max: {"7月": 1}}}
+      - {label: "集中在 7 月（6 月放 1 以下）", when: {release_max: {"6月": 1}}}
+      - {label: "兩個月都放 2 以上", when: {release_min: {"6月": 2, "7月": 2}}}
+    explain: "放 2、3 單位的基本收益是 7、9，邊際遞減，把水分給兩個月比全擠在一個月多。最優計畫是 6 月放 2、7 月放 3。"
 ---
 
 ## 定義

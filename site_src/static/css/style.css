@@ -511,3 +511,6 @@ table.tableau td.uncov { background: color-mix(in srgb, var(--s4) 10%, transpare
 }
 .predict-teaser:hover { filter: brightness(1.05); }
 .predict-teaser:focus-visible { outline: 2px solid var(--s4); outline-offset: 2px; }
+/* ---- predict on LP / combinatorial widgets (lp.js, combo.js; phase B) ----
+   The step counter "第 k / N 步" would give away step and pivot counts. */
+.predict-hidden .lp-lab .status-line { visibility: hidden; }

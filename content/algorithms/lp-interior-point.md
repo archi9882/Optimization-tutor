@@ -6,6 +6,30 @@ lp:
   sliders: [c1, c2]
   speed: 4
 practice: barrier
+predict:
+  - id: p1
+    prompt: "預設 c = (3, 5)：27 步牛頓法中，迭代點會碰到可行域的邊界嗎？"
+    scenario: {}
+    options:
+      - {label: "不會，每一步都嚴格在內部", when: {stays_interior: true}}
+      - {label: "會，最後停在頂點 (2, 6) 上", when: {stays_interior: false}}
+    explain: "障礙項 −μ Σ log(餘裕) 在邊界上是無限大，牛頓步不會越過去。最後一點 (2.0000, 5.9999) 只是非常靠近頂點 (2, 6)，所有點中最小的餘裕約 1.0 × 10⁻⁴。"
+  - id: p2
+    prompt: "做完 9 輪 μ（最後 μ ≈ 1.5 × 10⁻⁴），z 和最優值 36 差多少？"
+    scenario: {}
+    options:
+      - {label: "剛好 36", when: {final_z_above: 36}}
+      - {label: "差不到 0.001", when: {final_z_above: 35.999, final_z_below: 36}}
+      - {label: "差 0.001 以上", when: {final_z_below: 35.999}}
+    explain: "最後 z = 35.9997，差 3.05 × 10⁻⁴，低於理論上界 m·μ = 7.6 × 10⁻⁴（m = 5 條限制）。內點法一路逼近，但不會剛好落在頂點上。"
+  - id: p3
+    prompt: "c = (3, 2)：整條邊 (4, 3)–(2, 6) 都是最優解。內點法最後停在哪裡？"
+    scenario: {preset_params: {c1: 3, c2: 2}}
+    options:
+      - {label: "頂點 (4, 3)", when: {final_point: [4, 3]}}
+      - {label: "頂點 (2, 6)", when: {final_point: [2, 6]}}
+      - {label: "邊的中間 (3, 4.5)", when: {final_point: [3, 4.5]}}
+    explain: "障礙項偏好離所有邊界都遠的點，所以在最優邊上收斂到兩個頂點的正中間（實測 (3.0000, 4.5000)）；單純形法則停在頂點 (4, 3)。內點法找到的是最優面的中心，不是頂點。"
 ---
 
 ## 定義

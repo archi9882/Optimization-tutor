@@ -4,6 +4,29 @@ combo:
   method: two_opt
   speed: 0.6
 practice: two_opt
+predict:
+  - id: p1
+    prompt: "2-opt 每一步做增益最大的交換。過程中路線會先變長嗎？"
+    scenario: {}
+    options:
+      - {label: "不會，每一步都變短", when: {uphill_max: 0}}
+      - {label: "會，偶爾先變長", when: {uphill_min: 1}}
+    explain: "2-opt 只接受讓路線變短的交換，找不到就停：32.42 → 26.59 → 22.62 → 20.56 → 18.64 km。"
+  - id: p2
+    prompt: "從 1 → 2 → … → 9 → 1（32.42 km）出發，2-opt 做幾次交換後停下？"
+    scenario: {}
+    options:
+      - {label: "1～3 次", when: {steps_min: 1, steps_max: 3}}
+      - {label: "4～6 次", when: {steps_min: 4, steps_max: 6}}
+      - {label: "7 次以上", when: {steps_min: 7}}
+    explain: "4 次交換就把所有交叉拆掉，之後任何 2-opt 交換都不能再縮短。"
+  - id: p3
+    prompt: "停下來時已經沒有能縮短的交換。這條路線是最短的嗎？"
+    scenario: {}
+    options:
+      - {label: "是，已經是最短路線", when: {reaches_optimum: true}}
+      - {label: "不是，比最短的長", when: {reaches_optimum: false}}
+    explain: "停在 18.641 km，但列舉全部路線的最短是 18.195 km。沒有能縮短的 2-opt 交換只代表局部最優；要再縮短得先接受一步變長，見禁忌搜尋。"
 ---
 
 ## 定義

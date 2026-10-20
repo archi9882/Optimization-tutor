@@ -313,13 +313,129 @@ def predict_data(algo_id: str, lab_cfg: dict, questions: list[dict],
     return out
 
 
-def attach_predict(algo_id: str, meta: dict, lab: dict | None) -> None:
-    """Add the page's prediction questions to its lab data (if it has any)."""
+def attach_predict(algo_id: str, meta: dict, lab: dict | None,
+                   lpd: dict | None = None, combod: dict | None = None) -> None:
+    """Add the page's prediction questions to its widget's data (if it has any).
+
+    The continuous lab (lab:) runs traces; the LP (lp:) and combinatorial
+    (combo:) widgets run their whole method (widget_predict_data).
+    """
     if "predict" not in meta:
         return
-    if lab is None:
-        raise ValueError(f"{algo_id}: predict: needs a lab: (renderer 1) on the same page")
-    lab["predict"] = predict_data(algo_id, meta["lab"], meta["predict"], lab)
+    if lab is not None:
+        lab["predict"] = predict_data(algo_id, meta["lab"], meta["predict"], lab)
+    elif lpd is not None:
+        lpd["predict"] = widget_predict_data(algo_id, "lp", meta["lp"], meta["predict"], lpd)
+    elif combod is not None:
+        combod["predict"] = widget_predict_data(algo_id, "combo", meta["combo"],
+                                                meta["predict"], combod)
+    else:
+        raise ValueError(f"{algo_id}: predict: needs a lab: (renderer 1), lp: or combo: "
+                         "on the same page")
+
+
+# Coefficient sliders of the LP widget (lp.js reads them from the page data).
+LP_SLIDERS = {
+    "c1": {"label": "c₁（x₁ 的係數）", "lo": 0.5, "hi": 8.0, "step": 0.5, "index": 0},
+    "c2": {"label": "c₂（x₂ 的係數）", "lo": 0.5, "hi": 8.0, "step": 0.5, "index": 1},
+}
+
+
+def widget_sliders(kind: str, cfg: dict) -> dict:
+    """name -> {lo, hi, step, ...} of the sliders this widget shows."""
+    if kind == "lp":
+        bad = [n for n in cfg.get("sliders", []) if n not in LP_SLIDERS]
+        if bad:
+            raise ValueError(f"lp: unknown slider(s) {bad}; known: {sorted(LP_SLIDERS)}")
+        return {n: LP_SLIDERS[n] for n in cfg.get("sliders", [])}
+    return {sl["name"]: {"step": 1} | sl for sl in cfg.get("sliders", [])}
+
+
+def _on_slider(what: str, sl: dict, v: object) -> None:
+    """Fail unless v is a position of a range input lo..hi with this step."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        raise ValueError(f"{what} needs a number, got {v!r}")
+    k = (v - sl["lo"]) / sl["step"]
+    if not (sl["lo"] - 1e-12 <= v <= sl["hi"] + 1e-12) or abs(k - round(k)) > 1e-9:
+        raise ValueError(f"{what} = {v} is not on its slider ({sl['lo']}..{sl['hi']}, "
+                         f"step {sl['step']})")
+
+
+WIDGET_SCENARIO_KEYS = {"lp": "preset_params", "combo": "params"}
+WIDGET_QUESTION_KEYS = {"id", "prompt", "scenario", "options", "explain"}
+
+
+def widget_spec(kind: str, cfg: dict, sc: dict) -> dict:
+    """Widget spec of one scenario; only the page's own sliders may be moved.
+
+    lp: scenario {preset_params: {c1, c2}}; combo: scenario {params: {...}}.
+    A page without sliders can only ask about its default run (scenario {}).
+    """
+    key = WIDGET_SCENARIO_KEYS[kind]
+    _known("scenario", sc, {key})
+    sliders = widget_sliders(kind, cfg)
+    _known(f"scenario {key}", sc.get(key, {}), set(sliders))
+    for name, v in sc.get(key, {}).items():
+        _on_slider(name, sliders[name], v)
+    if kind == "lp":
+        return {"method": cfg["method"], "preset": cfg["preset"],
+                "preset_params": cfg.get("preset_params", {}) | sc.get(key, {})}
+    return {"method": cfg["method"], "params": cfg.get("params", {}) | sc.get(key, {})}
+
+
+def widget_predict_data(algo_id: str, kind: str, cfg: dict, questions: list[dict],
+                        default: dict | None = None) -> list[dict]:
+    """Run every scenario of an LP or combinatorial page and decide its answer.
+
+    Same rules as predict_data: explicit unique ids, unknown keys fail, values
+    must be slider positions, exactly one option must hold. The result of a
+    scenario equal to the page default is not embedded again ({"same": true});
+    an LP result is embedded without its objective grid (lp.js redraws the
+    linear objective from c).
+    """
+    out, seen = [], set()
+    for n, q in enumerate(questions, 1):
+        qid = f"{algo_id}#{q['id']}" if isinstance(q, dict) and isinstance(q.get("id"), str) else f"{algo_id}#(第 {n} 題)"
+        try:
+            if not isinstance(q.get("id"), str) or not re.fullmatch(r"p\d+", q["id"]):
+                raise ValueError("every question needs an explicit id such as 'p1' (saved answers use it)")
+            if q["id"] in seen:
+                raise ValueError(f"duplicate question id {q['id']!r}")
+            seen.add(q["id"])
+            _known("question", q, WIDGET_QUESTION_KEYS)
+            for key in ("prompt", "options", "explain"):
+                if key not in q:
+                    raise ValueError(f"missing {key!r}")
+            spec = widget_spec(kind, cfg, q.get("scenario", {}))
+            if not isinstance(q["options"], list) or not 2 <= len(q["options"]) <= 4:
+                raise ValueError("a question needs 2 to 4 options")
+            for o in q["options"]:
+                _known("option", o, OPTION_KEYS)
+                predmod.validate_widget(o.get("when"), kind, spec["method"])
+            if kind == "lp":
+                res = api.lp_lab(spec)
+                m = predmod.measure_lp(res, lpmod.make_lp(spec["preset"], **spec["preset_params"]))
+            else:
+                res = api.combo_lab(spec)
+                m = predmod.measure_combo(res)
+            ans = predmod.answer_widget(q["options"], m)
+        except (ValueError, KeyError, TypeError) as err:
+            raise ValueError(f"{qid}: {err}") from err
+        if default and spec == default["spec"]:
+            embedded = {"same": True}
+        else:
+            embedded = round_sig({k: v for k, v in res.items() if k != "grid"}, 10)
+        out.append({
+            "id": qid, "prompt": q["prompt"], "explain": q["explain"],
+            "subject_name": predmod.METHOD_NAMES[spec["method"]],
+            "answer": ans, "measured": m, "summary": predmod.summary_widget(m),
+            "options": [{"label": o["label"],
+                         "criterion": predmod.criterion_widget(o["when"], spec["method"])}
+                        for o in q["options"]],
+            # same_grid: the widget needs no Python to show this scenario
+            "scenario": {"spec": spec, "result": embedded, "same_grid": True},
+        })
+    return out
 
 
 def lp_data(cfg: dict) -> dict:
@@ -331,6 +447,7 @@ def lp_data(cfg: dict) -> dict:
     spec = {"method": cfg["method"], "preset": cfg["preset"],
             "preset_params": cfg.get("preset_params", {})}
     return {"spec": spec, "sliders": cfg.get("sliders", []),
+            "slider_defs": widget_sliders("lp", cfg),
             "speed": cfg.get("speed", 1.0), "result": api.lp_lab(spec)}
 
 
@@ -460,9 +577,9 @@ def build(out: Path = OUT, vendor: Path | None = None) -> None:
         a["n_cards"] = len(recall)
         all_cards.extend(recall)
         lab = lab_data(meta["lab"]) if "lab" in meta else None
-        attach_predict(a["id"], meta, lab)
         lpd = lp_data(meta["lp"]) if "lp" in meta else None
         combod = combo_data(meta["combo"]) if "combo" in meta else None
+        attach_predict(a["id"], meta, lab, lpd, combod)
         practice = practice_data(meta["practice"]) if "practice" in meta \
             else None
         html = html.replace("<!-- lab -->", '<div id="lab"></div>')

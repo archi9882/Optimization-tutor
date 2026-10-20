@@ -5,6 +5,23 @@ lp:
   preset: farm_qp
   speed: 0.8
 practice: active_set
+predict:
+  - id: p1
+    prompt: "目標計畫 (5, 7) 不可行。加權距離最小的可行計畫在哪裡？"
+    scenario: {}
+    options:
+      - {label: "頂點 (2, 6)", when: {final_point: [2, 6]}}
+      - {label: "頂點 (4, 3)", when: {final_point: [4, 3]}}
+      - {label: "灌溉水那條邊的中間 (3, 4.5)", when: {final_point: [3, 4.5]}}
+    explain: "二次目標的等值線是橢圓，和灌溉水限制線相切的點就是最優，可以落在邊的中間。LP 的最優解一定能在頂點找到，QP 不一定。"
+  - id: p2
+    prompt: "從原點、工作集 W = ∅ 出發，有效集法要幾步？"
+    scenario: {}
+    options:
+      - {label: "1 步", when: {steps_max: 1}}
+      - {label: "2 步", when: {steps_min: 2, steps_max: 2}}
+      - {label: "3 步以上", when: {steps_min: 3}}
+    explain: "第 1 步朝 (5, 7) 走，途中在 (3.103, 4.345) 被灌溉水限制擋住，把它加入 W；第 2 步沿這條線走到線上最低點 (3, 4.5)。之後方向為 0、乘數都 ≥ 0，就停了。"
 ---
 
 ## 定義

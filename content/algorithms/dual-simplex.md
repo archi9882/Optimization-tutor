@@ -6,6 +6,31 @@ lp:
   sliders: [c1, c2]
   speed: 0.8
 practice: dual_simplex
+predict:
+  - id: p1
+    prompt: "預設價格 c = (2, 3)：對偶單純形法從原點出發（成本 0，但不滿足需求）。每次樞紐後，成本會？"
+    scenario: {}
+    options:
+      - {label: "一路下降", when: {z_trend: down}}
+      - {label: "一路上升", when: {z_trend: up}}
+      - {label: "有升有降", when: {z_trend: mixed}}
+    explain: "原點便宜但不可行。每次樞紐都在保持檢驗數 ≥ 0（對偶可行）的前提下補上需求，成本 0 → 8 → 12 一路上升，第一次變成原始可行時就是最優。成本上升不是走錯方向，而是從下方逼近最優值。"
+  - id: p2
+    prompt: "價格改成 c = (3, 1)（肥料乙便宜）。對偶單純形法要幾次樞紐？"
+    scenario: {preset_params: {c1: 3, c2: 1}}
+    options:
+      - {label: "1 次", when: {pivots_max: 1}}
+      - {label: "2 次", when: {pivots_min: 2, pivots_max: 2}}
+      - {label: "3 次以上", when: {pivots_min: 3}}
+    explain: "肥料乙每包補氮 1、磷 2，只用 8 包乙就同時滿足兩項需求：(0, 8)，成本 8。一次樞紐後右手邊全部 ≥ 0，就停了。"
+  - id: p3
+    prompt: "c = (1, 3)（肥料乙很貴）：最後的配方是？"
+    scenario: {preset_params: {c1: 1, c2: 3}}
+    options:
+      - {label: "(3, 2)：兩種都用", when: {final_point: [3, 2]}}
+      - {label: "(7, 0)：只用肥料甲", when: {final_point: [7, 0]}}
+      - {label: "(0, 8)：只用肥料乙", when: {final_point: [0, 8]}}
+    explain: "只用甲時 (7, 0) 滿足氮 14 ≥ 8、磷 7 ≥ 7，成本 7。路徑是 (0, 0) → (4, 0) → (7, 0)：中間點 (4, 0) 只滿足氮，成本 4，仍是一路上升。"
 ---
 
 ## 定義

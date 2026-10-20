@@ -4,6 +4,22 @@ combo:
   method: hungarian
   speed: 0.4
 practice: hungarian
+predict:
+  - id: p1
+    prompt: "每列、每欄減去最小值之後，能直接在 0 上選出 5 個不同列、不同欄的位置嗎？"
+    scenario: {}
+    options:
+      - {label: "可以，不用調整", when: {adjustments_max: 0}}
+      - {label: "要調整矩陣 1 次", when: {adjustments_min: 1, adjustments_max: 1}}
+      - {label: "要調整 2 次以上", when: {adjustments_min: 2}}
+    explain: "縮減後 4 條線（3 列 + 1 欄）就蓋住所有 0，少於 5 條表示還選不出 5 個獨立的 0。沒被蓋住的元素減 1、交叉點加 1 之後要 5 條線，就能指派了。"
+  - id: p2
+    prompt: "最後的總時數，和列舉全部 120 種分派找到的最少時數比？"
+    scenario: {}
+    options:
+      - {label: "相同", when: {reaches_optimum: true}}
+      - {label: "多一點（匈牙利法是近似解）", when: {reaches_optimum: false}}
+    explain: "匈牙利法每一步只對整列或整欄加減常數，不改變哪個分派最好；停下時在 0 上選出的分派就是最優。總時數 38，和窮舉的最小值相同。"
 ---
 
 ## 定義

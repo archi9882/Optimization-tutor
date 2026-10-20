@@ -41,7 +41,8 @@ const h = (tag, attrs = {}, ...kids) => {
 };
 
 /**
- * Mount the question card before the lab.
+ * Mount the question card before the lab (lab.js) or an LP / combinatorial
+ * widget (lp.js, combo.js); all three pass the same interface:
  * lab = {applyScenario(sc) -> Promise (rejects with err.superseded when a later
  *        edit or cancelScenario() wins), cancelScenario(),
  *        playThrough() -> Promise<finished>, pause(), play(), showEnd()}
@@ -79,10 +80,14 @@ export function mountPredict(mount, questions, lab) {
   const plotsEl = mount.querySelector(".lab-plots");
   if (plotsEl) plotsEl.dataset.cover = "先預測，再看結果";
 
-  // Preload Python while the learner reads and chooses (lab.js also warms up).
-  const warm = () => warmUp().catch(() => {});
-  card.addEventListener("focusin", warm, { once: true });
-  card.addEventListener("pointerdown", warm, { once: true });
+  // Preload Python while the learner reads and chooses (lab.js also warms up),
+  // unless every scenario is shown without it (LP and combinatorial widgets
+  // embed their results).
+  if (questions.some((q) => !q.scenario.same_grid)) {
+    const warm = () => warmUp().catch(() => {});
+    card.addEventListener("focusin", warm, { once: true });
+    card.addEventListener("pointerdown", warm, { once: true });
+  }
 
   // While a question is pending the plots and result lines are covered by a
   // solid panel and the whole lab is dimmed and inert (its default values

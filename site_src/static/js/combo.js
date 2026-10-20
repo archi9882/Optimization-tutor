@@ -26,7 +26,7 @@ const h = (tag, attrs = {}, ...kids) => {
 
 // ---------- layout ----------
 const pyStatus = h("span", { class: "py-status" });
-const sliderSetters = [];
+const sliderSetters = {};
 const sliders = (data.sliders || []).map((sl) => {
   const initial = () => data.spec.params[sl.name] ?? sl.default;   // build-time value
   const out = h("output", {}, String(initial()));
@@ -36,7 +36,7 @@ const sliders = (data.sliders || []).map((sl) => {
     st.spec.params[sl.name] = Number(input.value);
     schedule();
   });
-  sliderSetters.push(() => { input.value = String(initial()); out.textContent = input.value; });
+  sliderSetters[sl.name] = (v) => { input.value = String(v ?? initial()); out.textContent = input.value; };
   return h("label", { class: "slider" }, sl.label, input, out);
 });
 const viewTitle = h("div", { class: "plot-title" });
@@ -219,10 +219,18 @@ function play() {
   };
   timer = setTimeout(tick, 1000 / data.speed);
 }
-function pause() { st.playing = false; clearTimeout(timer); playBtn.textContent = "▶ 播放"; }
+// Callers of playThrough() (prediction cards) wait for the next pause.
+let pauseWaiters = [];
+function pause() {
+  st.playing = false; clearTimeout(timer); playBtn.textContent = "▶ 播放";
+  const waiters = pauseWaiters;
+  pauseWaiters = [];
+  for (const fn of waiters) fn(st.frame >= last());
+}
+function playThrough() { return new Promise((resolve) => { pauseWaiters.push(resolve); play(); }); }
 
 let debounce = null;
-function schedule() { clearTimeout(debounce); debounce = setTimeout(recompute, 150); }
+function schedule() { st.version++; clearTimeout(debounce); debounce = setTimeout(recompute, 150); }
 async function recompute() {
   const version = ++st.version;
   try {
@@ -243,7 +251,7 @@ function resetParams() {
   pause();
   st.spec = structuredClone(data.spec);
   st.res = data.result;
-  sliderSetters.forEach((set) => set());
+  for (const set of Object.values(sliderSetters)) set();
   setFrame(0);
 }
 
@@ -256,6 +264,29 @@ if (st.res.kind === "graph") {
 }
 setFrame(0);
 if (sliders.length) warmUp().catch(() => {});
-new IntersectionObserver((entries, obs) => {
-  if (entries.some((e) => e.isIntersecting)) { obs.disconnect(); play(); }
-}, { threshold: 0.4 }).observe(mount);
+
+// ---------- prediction questions (frontmatter predict:) ----------
+// Scenario results are computed at build time and embedded ({same: true}:
+// the page default), so showing one needs no Python.
+function applyScenario(sc) {
+  clearTimeout(debounce);
+  st.version++;               // drop any recompute still in flight
+  pause();
+  st.spec = structuredClone(sc.spec);
+  st.res = sc.result.same ? data.result : sc.result;
+  for (const [name, set] of Object.entries(sliderSetters)) set(st.spec.params[name]);
+  setFrame(0);
+  return Promise.resolve();
+}
+function cancelScenario() { st.version++; }
+function showEnd() { pause(); setFrame(last()); }
+function autoplay() {
+  new IntersectionObserver((entries, obs) => {
+    if (entries.some((e) => e.isIntersecting)) { obs.disconnect(); play(); }
+  }, { threshold: 0.4 }).observe(mount);
+}
+if (data.predict) {
+  import("./predict.js")
+    .then((m) => m.mountPredict(mount, data.predict, { applyScenario, cancelScenario, playThrough, pause, play, showEnd }))
+    .catch(autoplay);
+} else autoplay();

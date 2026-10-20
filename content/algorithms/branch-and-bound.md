@@ -6,6 +6,40 @@ lp:
   sliders: [c1, c2]
   speed: 0.7
 practice: branch_bound
+predict:
+  - id: p1
+    prompt: "預設 c = (5, 4)：LP 鬆弛的最優解是 (3, 1.5)。整數最優解是？"
+    scenario: {}
+    options:
+      - {label: "(3, 1)：把 1.5 捨去", when: {final_point: [3, 1]}}
+      - {label: "(3, 2)：四捨五入", when: {final_point: [3, 2]}}
+      - {label: "(4, 0)", when: {final_point: [4, 0]}}
+      - {label: "(2, 2)", when: {final_point: [2, 2]}}
+    explain: "(3, 2) 超出預算（6·3 + 4·2 = 26 > 24）；(3, 1) 可行但 z = 19；(4, 0) 的 z = 20 才最大。把 LP 解四捨五入可能不可行，也可能不是最優。"
+  - id: p2
+    prompt: "預設 c = (5, 4)：分支定界總共要解幾個節點（LP 子問題）？"
+    scenario: {}
+    options:
+      - {label: "1～3 個", when: {nodes_min: 1, nodes_max: 3}}
+      - {label: "4～6 個", when: {nodes_min: 4, nodes_max: 6}}
+      - {label: "7 個以上", when: {nodes_min: 7}}
+    explain: "根節點對 x₂ 分支；x₂ ≤ 1 這邊再對 x₁ 分支，先後找到 (3, 1)、z = 19 與 (4, 0)、z = 20。x₂ ≥ 2 的節點 LP 上界只有 18，不比 20 好，直接剪枝。共 5 個節點。"
+  - id: p3
+    prompt: "c = (6, 2)：要解幾個節點？"
+    scenario: {preset_params: {c1: 6, c2: 2}}
+    options:
+      - {label: "只有 1 個", when: {nodes_max: 1}}
+      - {label: "2～4 個", when: {nodes_min: 2, nodes_max: 4}}
+      - {label: "5 個以上", when: {nodes_min: 5}}
+    explain: "這時 LP 鬆弛的最優解就是 (4, 0)，本身已是整數，根節點直接成為最佳解，不必分支。"
+  - id: p4
+    prompt: "c = (5, 5)：(4, 0)、(3, 1)、(2, 2) 的 z 都是 20。分支定界回報哪一個？"
+    scenario: {preset_params: {c1: 5, c2: 5}}
+    options:
+      - {label: "(4, 0)", when: {final_point: [4, 0]}}
+      - {label: "(3, 1)", when: {final_point: [3, 1]}}
+      - {label: "(2, 2)", when: {final_point: [2, 2]}}
+    explain: "深度優先、先走 ≤ 的分支，最先找到的整數解是 (3, 1)。之後 (4, 0) 與 (2, 2) 的節點 z 也是 20，但「不比現有最佳好」就被剪掉。有多個最優解時，回報哪一個取決於搜尋順序。"
 ---
 
 ## 定義

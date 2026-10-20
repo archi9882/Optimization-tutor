@@ -4,6 +4,22 @@ combo:
   method: kruskal
   speed: 1
 practice: greedy
+predict:
+  - id: p1
+    prompt: "Kruskal 由短到長看候選管線。要選滿 8 條，會遇到必須跳過的管線嗎？"
+    scenario: {}
+    options:
+      - {label: "不會，最短的 8 條直接構成樹", when: {rejected_max: 0}}
+      - {label: "會，跳過 1～3 條", when: {rejected_min: 1, rejected_max: 3}}
+      - {label: "會，跳過 4 條以上", when: {rejected_min: 4}}
+    explain: "看到第 10 短的管線才選滿 8 條，中間跳過 2 條：它們的兩端已經透過較短的管線連通，再選就會形成迴圈。"
+  - id: p2
+    prompt: "Kruskal 每次只挑眼前最短、不成迴圈的管線。總長是所有連通方式中最短的嗎？"
+    scenario: {}
+    options:
+      - {label: "是，等於最小生成樹", when: {reaches_optimum: true}}
+      - {label: "不一定，可能比最短的長", when: {reaches_optimum: false}}
+    explain: "最小生成樹有切割性質：連接兩群田區的最短管線，一定能放進某棵最小生成樹，所以這種貪婪選法保證最優。實測總長 11.944 km，和 Prim 演算法獨立算出的相同。"
 ---
 
 ## 定義

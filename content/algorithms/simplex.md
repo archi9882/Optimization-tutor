@@ -6,6 +6,31 @@ lp:
   sliders: [c1, c2]
   speed: 0.8
 practice: simplex
+predict:
+  - id: p1
+    prompt: "預設 c = (3, 5)：從原點出發，單純形法要幾次樞紐才到最優？"
+    scenario: {}
+    options:
+      - {label: "1 次", when: {pivots_max: 1}}
+      - {label: "2 次", when: {pivots_min: 2, pivots_max: 2}}
+      - {label: "3 次以上", when: {pivots_min: 3}}
+    explain: "x₂ 的檢驗數 −5 最負，先沿 x₂ 軸走到溫室上限 (0, 6)，再讓 x₁ 進基到 (2, 6)。每次樞紐都移到相鄰的頂點，z 由 0 → 30 → 36。"
+  - id: p2
+    prompt: "c = (1, 1)：兩個檢驗數同為 −1，Dantzig 規則（選最負的，同分取前面的 x₁）會走幾次樞紐？"
+    scenario: {preset_params: {c1: 1, c2: 1}}
+    options:
+      - {label: "1 次", when: {pivots_max: 1}}
+      - {label: "2 次", when: {pivots_min: 2, pivots_max: 2}}
+      - {label: "3 次以上", when: {pivots_min: 3}}
+    explain: "同分時選了 x₁，路徑是 (0, 0) → (4, 0) → (4, 3) → (2, 6)，共 3 次；如果第一步選 x₂，2 次就到。選欄規則會影響走幾步，但不影響終點。"
+  - id: p3
+    prompt: "c = (3, 2)：目標的等值線和灌溉水限制 3x₁ + 2x₂ ≤ 18 平行，整條邊 (4, 3)–(2, 6) 的 z 都是 18。單純形法停在哪裡？"
+    scenario: {preset_params: {c1: 3, c2: 2}}
+    options:
+      - {label: "頂點 (2, 6)", when: {final_point: [2, 6]}}
+      - {label: "頂點 (4, 3)", when: {final_point: [4, 3]}}
+      - {label: "邊的中間 (3, 4.5)", when: {final_point: [3, 4.5]}}
+    explain: "x₁ 的檢驗數 −3 較負，先到 (4, 0)、再到 (4, 3)，這時目標列已沒有負的檢驗數，就停了。單純形法只在頂點之間移動，有整條最優邊時也只回報其中一個頂點。"
 ---
 
 ## 定義

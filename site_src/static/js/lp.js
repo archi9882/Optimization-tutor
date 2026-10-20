@@ -8,10 +8,9 @@ import { call, onState, warmUp } from "./py.js";
 const data = JSON.parse(document.getElementById("lp-data").textContent);
 const mount = document.getElementById("lp");
 
-const SLIDERS = {
-  c1: { label: "c₁（x₁ 的係數）", lo: 0.5, hi: 8, index: 0 },
-  c2: { label: "c₂（x₂ 的係數）", lo: 0.5, hi: 8, index: 1 },
-};
+// Coefficient sliders {label, lo, hi, step, index}: defined once in
+// scripts/build.py (LP_SLIDERS), where prediction scenarios are checked against them.
+const SLIDERS = data.slider_defs || {};
 
 const st = {
   spec: structuredClone(data.spec),
@@ -42,20 +41,21 @@ function frac(v) {
   return fmt(v);
 }
 
-// Build-time slider value: the page's preset_params, else the preset's own c.
-const initialValue = (name) => data.spec.preset_params[name] ?? data.result.region.c[SLIDERS[name].index];
+// Slider value of a spec: its preset_params, else the preset's own c.
+const valueOf = (spec, res, name) => spec.preset_params[name] ?? res.region.c[SLIDERS[name].index];
+const initialValue = (name) => valueOf(data.spec, data.result, name);
 
-const sliderSetters = [];
+const sliderSetters = {};
 function slider(name, value) {
   const m = SLIDERS[name];
   const out = h("output", {}, String(value));
-  const input = h("input", { type: "range", min: m.lo, max: m.hi, step: 0.5, value, "aria-label": m.label });
+  const input = h("input", { type: "range", min: m.lo, max: m.hi, step: m.step, value, "aria-label": m.label });
   input.addEventListener("input", () => {
     out.textContent = input.value;
     st.spec.preset_params[name] = Number(input.value);
     schedule();
   });
-  sliderSetters.push(() => { input.value = String(initialValue(name)); out.textContent = input.value; });
+  sliderSetters[name] = (v) => { input.value = String(v); out.textContent = input.value; };
   return h("label", { class: "slider" }, m.label, input, out);
 }
 
@@ -214,11 +214,20 @@ function play() {
   };
   timer = setTimeout(tick, 1000 / data.speed);
 }
-function pause() { st.playing = false; clearTimeout(timer); playBtn.textContent = "▶ 播放"; }
+// Callers of playThrough() (prediction cards) wait for the next pause:
+// the end of the run, the pause button or an edit (finished tells which).
+let pauseWaiters = [];
+function pause() {
+  st.playing = false; clearTimeout(timer); playBtn.textContent = "▶ 播放";
+  const waiters = pauseWaiters;
+  pauseWaiters = [];
+  for (const fn of waiters) fn(st.frame >= last());
+}
+function playThrough() { return new Promise((resolve) => { pauseWaiters.push(resolve); play(); }); }
 
 // ---------- live recompute through Pyodide ----------
 let debounce = null;
-function schedule() { clearTimeout(debounce); debounce = setTimeout(recompute, 150); }
+function schedule() { st.version++; clearTimeout(debounce); debounce = setTimeout(recompute, 150); }
 
 async function recompute() {
   const version = ++st.version;
@@ -243,13 +252,46 @@ function resetParams() {
   st.spec = structuredClone(data.spec);
   st.res = data.result;
   st.frame = 0;
-  sliderSetters.forEach((set) => set());
+  for (const n of data.sliders) sliderSetters[n](initialValue(n));
   render();
 }
 
 // ---------- boot ----------
 render();
 if (data.sliders.length) warmUp().catch(() => {});
-new IntersectionObserver((entries, obs) => {
-  if (entries.some((e) => e.isIntersecting)) { obs.disconnect(); play(); }
-}, { threshold: 0.4 }).observe(mount);
+
+// ---------- prediction questions (frontmatter predict:) ----------
+// Each scenario's result was computed at build time and is embedded, so no
+// Python is needed: {same: true} is the page default; other LP results come
+// without their objective grid, redrawn here from c (the objective is linear
+// on every page with sliders).
+function withGrid(res) {
+  if (res.grid) return res;
+  const g = data.result.grid;
+  if (!g.linear) throw new Error("scenario result without grid on a quadratic objective");
+  const [c1, c2] = res.region.c;
+  return { ...res, grid: { ...g, z: g.y.map((y) => g.x.map((x) => g.sign * (c1 * x + c2 * y))) } };
+}
+function applyScenario(sc) {
+  clearTimeout(debounce);
+  st.version++;               // drop any recompute still in flight
+  pause();
+  st.spec = structuredClone(sc.spec);
+  st.res = sc.result.same ? data.result : withGrid(sc.result);
+  st.frame = 0;
+  for (const n of data.sliders) sliderSetters[n](valueOf(st.spec, st.res, n));
+  render();
+  return Promise.resolve();
+}
+function cancelScenario() { st.version++; }
+function showEnd() { pause(); setFrame(last()); }
+function autoplay() {
+  new IntersectionObserver((entries, obs) => {
+    if (entries.some((e) => e.isIntersecting)) { obs.disconnect(); play(); }
+  }, { threshold: 0.4 }).observe(mount);
+}
+if (data.predict) {
+  import("./predict.js")
+    .then((m) => m.mountPredict(mount, data.predict, { applyScenario, cancelScenario, playThrough, pause, play, showEnd }))
+    .catch(autoplay);
+} else autoplay();
