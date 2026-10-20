@@ -333,6 +333,15 @@ def test_trust_region_records_radii_and_rejects_bad_steps() -> None:
     assert len(out["radius"]) == out["n_iter"] and min(out["radius"]) > 0
 
 
+def test_trust_region_indefinite_step_stops_at_cauchy_point() -> None:
+    """Uphill Newton step but gᵀHg > 0: stop at the model minimum along −g,
+    not at the boundary (f = 2x² − y², g = (4, −4), ‖g‖³/gᵀHg = 4√2 < Δ)."""
+    from optlab.demos.trust_region import dogleg_step
+    x, r = dogleg_step((1.0, 2.0), 8.0, lambda p: 2 * p[0] ** 2 - p[1] ** 2,
+                       lambda p: (4 * p[0], -2 * p[1]), lambda p: ((4.0, 0.0), (0.0, -2.0)))
+    assert x == pytest.approx((-3.0, 6.0)) and r == 8.0
+
+
 # ---------- derivative-free family ----------
 
 @pytest.mark.parametrize("algo", ["nelder_mead", "powell", "pattern_search"])

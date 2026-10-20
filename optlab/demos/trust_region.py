@@ -10,7 +10,7 @@ PSEUDOCODE = """\
 Δ ← Δ₀
 for k = 0, 1, 2, …:
     m(p) = f(x) + gᵀp + ½ pᵀHp          # x 附近的二次模型
-    p ← 在 ‖p‖ ≤ Δ 內近似最小化 m（dogleg 折線）
+    p ← 在 ‖p‖ ≤ Δ 內近似最小化 m（dogleg 折線；牛頓步不是下降方向時只走柯西點）
     ρ ← 實際下降 / 模型預測下降
     若 ρ < 0.25：Δ ← Δ/4                 # 模型不可信，縮小範圍
     若 ρ > 0.75 且 p 碰到邊界：Δ ← min(2Δ, 10)    # 模型很準，放大範圍（設上限）
@@ -25,16 +25,16 @@ def dogleg_step(x, radius, f, grad_fn, hess_fn):
         return x, radius
     gHg = dot(g, matvec(H, g))
     p_newton = solve2(H, (-g[0], -g[1]))
-    steepest = (-radius * g[0] / norm(g), -radius * g[1] / norm(g))
+    # 柯西點：沿 −g 走到模型最低點 ‖g‖³/gᵀHg，但不超出邊界；gᵀHg ≤ 0 時模型沿 −g 一路下降，走到邊界
+    tau = radius if gHg <= 0 else min(radius, norm(g) ** 3 / gHg)
+    p_u = (-tau * g[0] / norm(g), -tau * g[1] / norm(g))
     if gHg <= 0 or p_newton is None or dot(p_newton, g) >= 0:
-        p = steepest                                   # H 非正定：沿最陡方向走到邊界
+        p = p_u                                        # 牛頓步不是下降方向：只走柯西點
     elif norm(p_newton) <= radius:
         p = p_newton                                   # 牛頓步就在範圍內
     else:
-        t = dot(g, g) / gHg
-        p_u = (-t * g[0], -t * g[1])                   # 沿 −g 的模型最低點
-        if norm(p_u) >= radius:
-            p = steepest
+        if tau >= radius:
+            p = p_u                                    # 柯西點已在邊界上
         else:                                          # 沿折線 p_u → p_newton 走到邊界
             v = (p_newton[0] - p_u[0], p_newton[1] - p_u[1])
             a, b, c = dot(v, v), 2 * dot(p_u, v), dot(p_u, p_u) - radius ** 2
