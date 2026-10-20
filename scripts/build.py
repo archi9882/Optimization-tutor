@@ -380,7 +380,21 @@ def widget_spec(kind: str, cfg: dict, sc: dict) -> dict:
     if kind == "lp":
         return {"method": cfg["method"], "preset": cfg["preset"],
                 "preset_params": cfg.get("preset_params", {}) | sc.get(key, {})}
-    return {"method": cfg["method"], "params": cfg.get("params", {}) | sc.get(key, {})}
+    return {"method": cfg["method"], "params": combo_params(cfg) | sc.get(key, {})}
+
+
+def combo_params(cfg: dict) -> dict:
+    """Runner params for a combo widget: slider defaults first, then explicit params.
+
+    A slider's `default` is what the page shows, so it must also be what the
+    default run uses (otherwise the runner's own default could silently differ).
+    """
+    out = {}
+    for sl in cfg.get("sliders", []):
+        if "default" in sl:
+            _on_slider(sl["name"], {"step": 1} | sl, sl["default"])
+            out[sl["name"]] = sl["default"]
+    return out | cfg.get("params", {})
 
 
 def widget_predict_data(algo_id: str, kind: str, cfg: dict, questions: list[dict],
@@ -453,7 +467,7 @@ def lp_data(cfg: dict) -> dict:
 
 def combo_data(cfg: dict) -> dict:
     """Precompute a combinatorial lab: {"method", "params", "speed"}."""
-    spec = {"method": cfg["method"], "params": cfg.get("params", {})}
+    spec = {"method": cfg["method"], "params": combo_params(cfg)}
     return {"spec": spec, "sliders": cfg.get("sliders", []), "speed": cfg.get("speed", 1.0),
             "result": api.combo_lab(spec)}
 

@@ -595,7 +595,7 @@ def test_widget_measure_matches_embedded_and_default_is_not_embedded() -> None:
             assert m == q["measured"], q["id"]
             emb = q["scenario"]["result"]
             default = (cfg.get("preset_params", {}) == spec.get("preset_params", {}) if kind == "lp"
-                       else cfg.get("params", {}) == spec["params"])
+                       else build.combo_params(cfg) == spec["params"])
             assert emb.get("same", False) == default, q["id"]
             if not default:
                 assert "grid" not in emb and len(emb["steps"]) == len(res["steps"])
@@ -858,3 +858,12 @@ def test_built_widget_pages_embed_questions(tmp_path: Path) -> None:
         assert [q["options"][q["answer"]]["label"] for q in d["predict"]] == answers
     assert data("simplex", "lp")["slider_defs"]["c1"] == build.LP_SLIDERS["c1"]
     assert data("qp-active-set", "lp")["slider_defs"] == {}
+
+
+def test_combo_slider_default_drives_the_default_run() -> None:
+    """A combo slider's default is merged into the run params (one source of truth)."""
+    cfg = {"method": "tabu", "sliders": [{"name": "tenure", "label": "t", "lo": 0, "hi": 8, "default": 3}]}
+    assert build.combo_params(cfg) == {"tenure": 3}
+    assert build.combo_data(cfg)["spec"]["params"] == {"tenure": 3}
+    with pytest.raises(ValueError):
+        build.combo_params({"method": "tabu", "sliders": [{"name": "tenure", "lo": 0, "hi": 8, "default": 9}]})
