@@ -1,6 +1,7 @@
 // Shared canvas renderers.
 //   ContourPlot     – renderer ①: 2D level sets + optimizer trajectories
-//                     (grid.constraints: shaded infeasible area + g = 0 curves);
+//                     (grid.constraints: shaded infeasible area + g = 0 curves;
+//                     series with dash + mark: a second iterate such as ADMM's z);
 //                     with setRegion() also renderer ②: feasible polygon,
 //                     constraint lines and iso-objective lines for LP/QP
 //   ConvergencePlot – f(x_k) − f* on a log axis, one line per optimizer
@@ -315,7 +316,7 @@ export class ContourPlot {
   // where any inequality is violated, then draw each g = 0 curve with
   // marching squares.
   drawConstraints(c) {
-    const g = this.grid, cons = g.constraints, nx = g.x.length, ny = g.y.length;
+    const g = this.grid, cons = g.constraints || [], nx = g.x.length, ny = g.y.length;
     const ineq = cons.filter((k) => k.kind !== "eq");
     // Bilinear value of a sampled constraint at fractional grid indices.
     const at = (z, fi, fj) => {
@@ -396,7 +397,7 @@ export class ContourPlot {
       const [px, py] = this.toPx(...g.unconstrained);
       c.strokeStyle = css("--muted"); c.lineWidth = 1.5;
       c.beginPath(); c.arc(px, py, 5, 0, 7); c.stroke();
-      const text = "無限制最小值", tw = c.measureText(text).width;
+      const text = g.unconstrained_label || "無限制最小值", tw = c.measureText(text).width;
       const right = px + 12 + tw + 4 <= this.w;
       box(text, right ? px + 12 + tw / 2 : px - 12 - tw / 2, py, css("--muted"));
     }
@@ -455,7 +456,7 @@ export class ContourPlot {
     });
     c.globalAlpha = 1;
     if (this.region) this.drawRegion(c);
-    if (this.grid.constraints) this.drawConstraints(c);
+    if (this.grid.constraints || this.grid.unconstrained) this.drawConstraints(c);
     c.strokeStyle = css("--ink-2");
     c.lineWidth = 1.5;
     for (const m of this.grid.minima) {
@@ -536,6 +537,12 @@ export class ContourPlot {
         c.arc(cx, cy, (s.radius[n - 1] * this.w) / (x1 - x0), 0, 2 * Math.PI);
         c.stroke();
         c.restore();
+      }
+      if (s.dash && s.mark) {
+        // Current point of a second iterate (ADMM's z): a hollow square.
+        const [px, py] = this.toPx(...s.xs[n - 1]);
+        c.fillStyle = surface; c.fillRect(px - 4.5, py - 4.5, 9, 9);
+        c.lineWidth = 2; c.strokeStyle = s.color; c.strokeRect(px - 4.5, py - 4.5, 9, 9);
       }
       if (!s.dash) {
         const [px, py] = this.toPx(...s.xs[n - 1]);

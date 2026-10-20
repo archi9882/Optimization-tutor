@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from .demos import lab_step
+from .demos import lab_step, sqp as _sqp
 from .problems import Problem, Vec
 from .sliders import slider_values
 
@@ -47,6 +47,7 @@ class Optimizer:
     name: str
     params: list[Param]
     step: StepFn
+    handles_l1: bool = False   # may run on problems with an l1 term (Problem.l1)
 
     def defaults(self) -> dict:
         """Return {param_name: default_value}."""
@@ -130,6 +131,11 @@ OPTIMIZERS: dict[str, Optimizer] = {
                   [Param("lr", 0.1, 1e-3, 1.0, True, _LR)],
                   lab_step("projected_gradient")),
         Optimizer("frank_wolfe", "Frank-Wolfe", [], lab_step("frank_wolfe")),
+        Optimizer("sqp", "SQP（Lagrangian Hessian）", [], lab_step("sqp")),
+        Optimizer("sqp_raw", "SQP（Hessian 不修正）", [], _sqp.raw_adapter(_sqp.FUNC)),
+        Optimizer("admm", "ADMM", [Param("rho", 1.0, 0.01, 100.0, True, "懲罰係數 ρ")],
+                  lab_step("admm"), handles_l1=True),
+        Optimizer("sqp_bfgs", "SQP（阻尼 BFGS）", [], _sqp.bfgs_adapter(_sqp.FUNC)),
     ]
 }
 

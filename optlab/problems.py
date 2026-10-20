@@ -48,6 +48,9 @@ class Problem:
     project: Callable[[Vec], Vec] | None = None   # Euclidean projection onto the set
     lmo: Callable[[Vec], Vec] | None = None       # argmin_{s in set} g^T s
     unconstrained: Vec | None = None              # minimiser of f without constraints
+    # Nonsmooth term: with l1 > 0 the objective is f(x) = s(x) + l1 * ||x||_1, where
+    # grad and hess belong to the smooth part s only (used by splitting methods).
+    l1: float = 0.0
 
 
 def quadratic(kappa: float = 10.0, theta_deg: float = 0.0) -> Problem:
@@ -340,6 +343,71 @@ def rosenbrock_disk() -> Problem:
         unconstrained=(1.0, 1.0))
 
 
+def maratos() -> Problem:
+    """A textbook Maratos-effect example: f = 2(x1^2 + x2^2 - 1) - x1 on the circle.
+
+    h = x1^2 + x2^2 - 1 = 0. On the circle f = 1 - ... reduces to -x1, so x* = (1, 0),
+    f* = -1; grad f + lam grad h = (3, 0) + lam (2, 0) = 0 gives lam* = -3/2.
+    At the centre grad h = 0 and h = -1: the linearised constraint has no solution.
+    """
+    def f(x: Vec) -> float:
+        return 2 * (x[0] ** 2 + x[1] ** 2 - 1) - x[0]
+
+    def grad(x: Vec) -> Vec:
+        return (4 * x[0] - 1, 4 * x[1])
+
+    def hess(x: Vec) -> tuple[Vec, Vec]:
+        return ((4.0, 0.0), (0.0, 4.0))
+
+    circle = Constraint("eq", lambda x: x[0] ** 2 + x[1] ** 2 - 1,
+                        lambda x: (2 * x[0], 2 * x[1]), lambda x: ((2.0, 0.0), (0.0, 2.0)),
+                        "x₁²+x₂² = 1")
+    return Problem(
+        id="maratos", name="圓上等式（Maratos 例）", f=f, grad=grad, hess=hess,
+        bounds=(-1.5, 1.5, -1.2, 1.2), x0=(math.cos(1.0), math.sin(1.0)),
+        minima=[(1.0, 0.0)], fstar=-1.0,
+        note="教科書式的例子（非應用問題）：f = 2(x₁²+x₂²−1) − x₁，限制 x₁²+x₂² = 1。"
+             "在圓上 f 就是 −x₁，最優解 (1, 0)；圓心的線性化限制無解。",
+        constraints=(circle,), multipliers=(-1.5,), unconstrained=(0.25, 0.0))
+
+
+def fert_lasso() -> Problem:
+    """Sparse dose: s(x) = (x1 + x2 - 3)^2 + 0.5 (x1 - 2)^2 plus 3 ||x||_1.
+
+    By hand: with x2 = 0 and x1 > 0, d/dx1 = 2(x1 - 3) + (x1 - 2) + 3 = 0 -> x1 = 5/3;
+    the x2 subgradient condition |ds/dx2| = |2(x1 - 3)| = 8/3 <= 3 holds, so
+    x* = (5/3, 0). Without the l1 term the optimum is (2, 1).
+    """
+    lam = 3.0
+
+    def smooth(x: Vec) -> float:
+        return (x[0] + x[1] - 3) ** 2 + 0.5 * (x[0] - 2) ** 2
+
+    def f(x: Vec) -> float:
+        return smooth(x) + lam * (abs(x[0]) + abs(x[1]))
+
+    def grad(x: Vec) -> Vec:          # smooth part only (see Problem.l1)
+        s = 2 * (x[0] + x[1] - 3)
+        return (s + (x[0] - 2), s)
+
+    def hess(x: Vec) -> tuple[Vec, Vec]:
+        return ((3.0, 2.0), (2.0, 2.0))
+
+    xs = (5 / 3, 0.0)
+    return Problem(
+        id="fert_lasso", name="施肥稀疏（ℓ1）", f=f, grad=grad, hess=hess,
+        bounds=(-1.0, 3.5, -1.5, 2.5), x0=(0.5, 2.0), minima=[xs], fstar=f(xs),
+        note="x₁, x₂ = 兩種肥料的用量（虛構係數）。產量損失 (x₁+x₂−3)² + ½(x₁−2)²："
+             "兩種肥料可互相替代，只有總量重要，另外 x₁ 偏好 2。"
+             "再加 3(|x₁|+|x₂|)：每用一種肥料都有成本，ℓ1 讓不必要的那一種正好為 0。",
+        l1=lam, unconstrained=(2.0, 1.0))
+
+
+def by_distance(problem: Problem) -> bool:
+    """Problems whose lab plots ||x - x*|| (constrained or with an l1 term)."""
+    return bool(problem.constraints) or problem.l1 > 0
+
+
 def violation(problem: Problem, x: Vec) -> float:
     """Largest constraint violation: max(g, 0) for g <= 0, |h| for h = 0."""
     worst = 0.0
@@ -364,7 +432,8 @@ def make_problem(problem_id: str, **params: float) -> Problem:
     builders = {"quadratic": quadratic, "rosenbrock": rosenbrock,
                 "himmelblau": himmelblau, "fert_budget": fert_budget,
                 "fert_eq": fert_equality, "fert_disk": fert_disk,
-                "reservoir": reservoir, "rosen_disk": rosenbrock_disk}
+                "reservoir": reservoir, "rosen_disk": rosenbrock_disk,
+                "maratos": maratos, "fert_lasso": fert_lasso}
     if problem_id not in builders:
         raise KeyError(f"unknown problem: {problem_id}")
     return builders[problem_id](**params)
@@ -386,6 +455,9 @@ def grid(problem: Problem, nx: int = 120, ny: int = 100) -> dict:
         out["constraints"] = [{"kind": c.kind, "label": c.label,
                                "z": [[round(c.g((x, y)), 6) for x in xs] for y in ys]}
                               for c in problem.constraints]
-        if problem.unconstrained:
-            out["unconstrained"] = list(problem.unconstrained)
+    if problem.unconstrained and by_distance(problem):
+        out["unconstrained"] = list(problem.unconstrained)
+    if problem.l1:
+        out["distance"] = True       # no constraints, but the lab plots ||x - x*||
+        out["unconstrained_label"] = "不含 ℓ1 的最小值"
     return out

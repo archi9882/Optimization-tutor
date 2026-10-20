@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from ..grading import Exercise
 from .active_set import EXERCISE as ACTIVE_SET
+from .admm import EXERCISE as ADMM
 from .adagrad import EXERCISE as ADAGRAD
 from .adam import EXERCISE as ADAM
 from .augmented_lagrangian import EXERCISE as AUGMENTED_LAGRANGIAN
@@ -39,6 +40,7 @@ from .projected_gradient import EXERCISE as PROJECTED_GRADIENT
 from .rmsprop import EXERCISE as RMSPROP
 from .sgd import EXERCISE as SGD
 from .simplex import EXERCISE as SIMPLEX
+from .sqp import EXERCISE as SQP
 from .tabu import EXERCISE as TABU
 from .trust_region import EXERCISE as TRUST_REGION
 from .two_opt import EXERCISE as TWO_OPT
@@ -49,7 +51,8 @@ EXERCISES: dict[str, Exercise] = {e.id: e for e in [
     SIMPLEX, DUAL_SIMPLEX, BARRIER, ACTIVE_SET,
     BRANCH_BOUND, CUTTING_PLANE, DYNAMIC_PROGRAMMING, GREEDY, HUNGARIAN, TWO_OPT, TABU,
     NELDER_MEAD, POWELL, PATTERN_SEARCH,
-    PENALTY, BARRIER_NL, AUGMENTED_LAGRANGIAN, PROJECTED_GRADIENT, FRANK_WOLFE]}
+    PENALTY, BARRIER_NL, AUGMENTED_LAGRANGIAN, PROJECTED_GRADIENT, FRANK_WOLFE,
+    SQP, ADMM]}
 
 
 def grade_json(exercise_id: str, source: str) -> str:

@@ -17,6 +17,8 @@ PAGES = ROOT / "content" / "algorithms"
 # asked to set with a slider: (owner, param, value). owner is an optimizer id,
 # "problem" (problem sliders) or "lab" (迭代數).
 QUOTED: dict[str, list[tuple[str, str, float]]] = {
+    "admm": [("admm", "rho", v) for v in (0.1, 0.3, 1, 2, 3, 5, 10, 30, 100)]
+    + [("lab", "n_iter", 500)],
     "adagrad": [("problem", "theta_deg", 45), ("adagrad", "lr", 1.5), ("adagrad", "lr", 0.5),
                 ("lab", "n_iter", 300)],
     "adam": [("problem", "theta_deg", 45), ("adam", "lr", 0.01), ("adam", "lr", 0.1),
@@ -54,6 +56,7 @@ QUOTED: dict[str, list[tuple[str, str, float]]] = {
     "rmsprop": [("rmsprop", "rho", 0.9), ("rmsprop", "rho", 0.99)],
     "sgd": [("sgd", "decay", 0.05), ("sgd", "sigma", 0), ("sgd", "lr", 0.05), ("sgd", "lr", 0.15),
             ("lab", "n_iter", 400)],
+    "sqp": [("lab", "n_iter", 400)],
     "trust-region": [("trust_region", "radius0", v) for v in (0.5, 3, 0.05)],
 }
 

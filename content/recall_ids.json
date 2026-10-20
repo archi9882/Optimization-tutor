@@ -23,6 +23,22 @@
   "sha": "36e41207be72",
   "q": "Q3. 什麼情況下你不會選 Adam？"
  },
+ "admm#q1": {
+  "sha": "5e901c3f9e80",
+  "q": "Q1. ADMM 和增廣 Lagrangian 法差在哪裡？"
+ },
+ "admm#q2": {
+  "sha": "07f47ae58879",
+  "q": "Q2. 原始殘差和對偶殘差各代表什麼？為什麼兩個都要看？"
+ },
+ "admm#q3": {
+  "sha": "a283ad7cd42d",
+  "q": "Q3. 為什麼 lasso 用 ADMM 時，z 是稀疏的而 x 不是？"
+ },
+ "admm#q4": {
+  "sha": "456baf5d97d2",
+  "q": "Q4. ρ 怎麼選？"
+ },
  "augmented-lagrangian#q1": {
   "sha": "d377b3cdc5f8",
   "q": "Q1. 為什麼增廣 Lagrangian 法不需要 ρ → ∞？"
@@ -370,6 +386,26 @@
  "simplex#q3": {
   "sha": "603fa620d6a1",
   "q": "Q3. 影子價格是什麼？在這個作物配置問題中怎麼解讀？"
+ },
+ "sqp#q1": {
+  "sha": "ece2002da975",
+  "q": "Q1. SQP 和牛頓法是什麼關係？"
+ },
+ "sqp#q2": {
+  "sha": "75b1cf943ee4",
+  "q": "Q2. QP 子問題的 Hessian 為什麼用 Lagrangian 的，而不是 f 的？"
+ },
+ "sqp#q3": {
+  "sha": "bf98a456ce52",
+  "q": "Q3. 為什麼需要價值函數？μ 怎麼選？"
+ },
+ "sqp#q4": {
+  "sha": "e67268059ba0",
+  "q": "Q4. 什麼是 Maratos 效應？怎麼補救？"
+ },
+ "sqp#q5": {
+  "sha": "d1d8ebcab9e4",
+  "q": "Q5. 什麼時候選 SQP，什麼時候選增廣 Lagrangian 或內點法？"
  },
  "tabu-search#q1": {
   "sha": "1684a3b72563",

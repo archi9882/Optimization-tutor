@@ -29,8 +29,9 @@ Derivative-free methods (the trace reports its f-evaluation count):
     evals_below       int: f evaluations of the whole run < N
     evals_above       int: f evaluations of the whole run >= N
 
-Constrained problems (measure() is given the problem). The lab plots
-||x - x*|| there, not f - f*, so the f - f* keys above are refused and these
+Constrained problems and problems with an l1 term (measure() is given the
+problem; the violation keys need constraints). The lab plots ||x - x*|| there,
+not f - f*, so the f - f* keys above are refused and these
 are used instead (a diverged run has an infinite distance and violation):
 
     final_dist_below/above       float: last ||x - x*|| < X / >= X
@@ -47,7 +48,7 @@ from __future__ import annotations
 
 import math
 
-from .problems import Problem, violation
+from .problems import Problem, by_distance, violation
 
 Measure = dict
 
@@ -76,16 +77,17 @@ def measure(trace: dict, fstar: float, reach_tol: float,
          "final_gap": gap if math.isfinite(gap) else None}
     if "evals" in trace:
         m["evals"] = int(trace["evals"])
-    if problem is not None and problem.constraints:
+    if problem is not None and by_distance(problem):
         diverged = trace["status"] == "diverged"
         xstar = problem.minima[0]
-        viol = [violation(problem, (x[0], x[1])) for x in xs]
         m.update({
             "dist": None if diverged else math.dist(xs[-1], xstar),
-            "violation": None if diverged else viol[-1],
-            "max_violation": None if diverged else max(viol),
             "outer": sum(bool(v) for v in trace.get("outer", [])),
         })
+        if problem.constraints:     # an l1 problem (Problem.l1) has nothing to violate
+            viol = [violation(problem, (x[0], x[1])) for x in xs]
+            m.update({"violation": None if diverged else viol[-1],
+                      "max_violation": None if diverged else max(viol)})
         if trace.get("message"):
             m["message"] = trace["message"]
     return m
@@ -140,6 +142,8 @@ EVALS_KEYS = {"evals_below", "evals_above"}
 CONSTRAINED_KEYS = {"final_dist_below", "final_dist_above", "final_violation_below",
                     "final_violation_above", "max_violation_below", "max_violation_above",
                     "stays_feasible", "outer_min", "outer_max"}
+VIOLATION_KEYS = {"final_violation_below", "final_violation_above", "max_violation_below",
+                  "max_violation_above", "stays_feasible"}
 NEW_INT_KEYS = {"stops_within", "not_stops_within", "evals_below", "evals_above",
                 "outer_min", "outer_max"}
 # (a, b): the predicate is empty unless when[a] < when[b]; outer_min/max: unless <=.
@@ -247,8 +251,9 @@ def summary(m: Measure, reach_tol: float) -> str:
         return f"第 {m['steps'] + 1} 步發散"
     if "dist" in m:   # constrained: the lab's line, then the path's numbers
         head = f"第 {m['steps']} 步停止：{m['message']}" if "message" in m else _stop(m)
-        out = (f"{head} · ‖x−x*‖ = {fmt(m['dist'])} · 違反量 {fmt(m['violation'])}"
-               f" · 路徑上最大違反量 {fmt(m['max_violation'])}")
+        out = f"{head} · ‖x−x*‖ = {fmt(m['dist'])}"
+        if "violation" in m:
+            out += f" · 違反量 {fmt(m['violation'])} · 路徑上最大違反量 {fmt(m['max_violation'])}"
         return out + (f" · 完成 {m['outer']} 輪外圈" if m["outer"] else "")
     tol = _sci(reach_tol)
     reach = (f"f−f* < {tol} 於第 {m['reach']} 步" if m["reach"] is not None
@@ -300,6 +305,8 @@ def applicable(when: dict, m: Measure) -> None:
                              "constrained problem; use final_dist_* instead")
         if k in CONSTRAINED_KEYS and not constrained:
             raise ValueError(f"{k} needs a constrained problem")
+        if k in VIOLATION_KEYS and "violation" not in m:
+            raise ValueError(f"{k} needs constraints to violate (this problem has an l1 term only)")
         if k in EVALS_KEYS and "evals" not in m:
             raise ValueError(f"{k} needs a method that counts f evaluations")
 

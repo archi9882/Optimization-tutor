@@ -34,6 +34,7 @@ sys.path.insert(0, str(ROOT))
 from optlab import OPTIMIZERS, api, demos, make_problem, lp as lpmod, predict as predmod  # noqa: E402
 from optlab.optimizers import N_ITER, PROBLEM_PARAMS, Param  # noqa: E402
 from optlab.exercises import EXERCISES  # noqa: E402
+from optlab.problems import by_distance  # noqa: E402
 
 CONTENT = ROOT / "content"
 SRC = ROOT / "site_src"
@@ -223,13 +224,13 @@ def round_sig(obj: object, digits: int = 6) -> object:
 def embed_trace(t: dict, prob) -> dict:
     """A scenario trace as embedded in the page, rounded by round_sig.
 
-    On a constrained problem the lab shows ‖x−x*‖ of the last iterate (down to
+    On a constrained (or l1) problem the lab shows ‖x−x*‖ of the last iterate (down to
     1e-12), which 6 significant digits of x cannot carry, so the iterates are
     kept at full precision there: the lab's result line then shows the same
     distance as the reveal's measured summary.
     """
     out = round_sig(t)
-    if prob.constraints:
+    if by_distance(prob):
         out["xs"] = t["xs"]
     return out
 

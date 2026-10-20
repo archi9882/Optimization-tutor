@@ -19,14 +19,16 @@ const PROBLEMS = {
   fert_disk: "土壤養分圓盤",
   reservoir: "兩座水庫放水（箱型）",
   rosen_disk: "Rosenbrock + 圓盤（非凸）",
+  maratos: "圓上等式（Maratos 例）",
+  fert_lasso: "施肥稀疏（ℓ1）",
 };
 const problemParams = (id) => data.problem_params[id] || [];
 // "f − f* < tol 於第 k 步" uses the same tolerance as the page text.
 const REACH_TOL = data.reach_tol ?? 1e-10;
 const PROBLEM_IDS = data.problems || ["quadratic", "rosenbrock", "himmelblau"];
-// With constraints the gradient of f is not zero at the optimum, so the
-// convergence plot shows the distance to the constrained optimum x* instead.
-const constrained = () => !!st.grid.constraints;
+// With constraints (or an l1 term, grid.distance) the gradient of f is not zero
+// at the optimum, so the convergence plot shows the distance to x* instead.
+const constrained = () => !!(st.grid.constraints || st.grid.distance);
 
 const initial = () => ({
   spec: structuredClone(data.spec),
@@ -165,7 +167,7 @@ function describe(t) {
   if (t.status === "diverged") return `第 ${t.n_iter + 1} 步發散`;
   if (constrained()) {
     const x = t.xs[t.xs.length - 1], xs = st.grid.minima[0];
-    const d = `‖x−x*‖ = ${fmt(Math.hypot(x[0] - xs[0], x[1] - xs[1]))} · 違反量 ${fmt(t.violation)}`;
+    const d = `‖x−x*‖ = ${fmt(Math.hypot(x[0] - xs[0], x[1] - xs[1]))}` + (st.grid.constraints ? ` · 違反量 ${fmt(t.violation)}` : "");
     if (t.message) return `第 ${t.n_iter} 步停止：${t.message} · ${d}`;
     return `${t.status === "stopped" ? `第 ${t.n_iter} 步停止` : `${t.n_iter} 步內未停止`} · ${d}`;
   }
@@ -182,8 +184,10 @@ function describe(t) {
 function visibleSeries() {
   return data.algos.map((id, i) => ({ id, i, t: st.traces.find((t) => t.algo === id) }))
     .filter((s) => s.t && st.enabled.has(s.id))
-    .map((s) => ({ xs: s.t.xs, fs: s.t.fs, status: s.t.status, radius: s.t.radius, poly: s.t.poly, polyKind: s.t.poly_kind, label: data.optimizers[s.id].name, color: seriesColor(s.i),
-      info: s.t.info, ...(s.t.outer ? { dots: true, big: s.t.outer } : {}) }));
+    .flatMap((s) => [{ xs: s.t.xs, fs: s.t.fs, status: s.t.status, radius: s.t.radius, poly: s.t.poly, polyKind: s.t.poly_kind, label: data.optimizers[s.id].name, color: seriesColor(s.i),
+      info: s.t.info, ...(s.t.outer ? { dots: true, big: s.t.outer } : s.t.dots ? { dots: true } : {}) },
+    // A second iterate (ADMM's z) as a dashed path in the same color, with a hollow marker.
+    ...(s.t.zs ? [{ xs: s.t.zs, status: s.t.status, label: `${data.optimizers[s.id].name} 的 z`, color: seriesColor(s.i), dash: true, mark: true }] : [])]);
 }
 
 function maxLen() { return Math.max(1, ...visibleSeries().map((s) => s.xs.length)); }
@@ -227,7 +231,8 @@ function renderProblemNote() {
   problemNote.hidden = !c;
   stepNote.hidden = !c;
   problemNote.textContent = c ? st.grid.note : "";
-  convTitle.textContent = c ? "‖xₖ − x*‖：到有限制最優解的距離（對數座標）" : "f(xₖ) − f*（對數座標）";
+  convTitle.textContent = !c ? "f(xₖ) − f*（對數座標）"
+    : st.grid.constraints ? "‖xₖ − x*‖：到有限制最優解的距離（對數座標）" : "‖xₖ − x*‖：到最優解的距離（對數座標）";
 }
 
 // ---------- animation ----------

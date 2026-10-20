@@ -371,6 +371,8 @@ ROLL_B = {
     "projected-gradient": ["第一步被拉回圓盤，之後收斂到 x*", "收斂：200 步內停止，且 ‖x − x*‖ < 10⁻⁶",
                            "收斂：200 步內停止，且 ‖x − x*‖ < 10⁻⁶", "不收斂：200 步內停不下來"],
     "frank-wolfe": ["每一步都留在三角形內", "151 次以上", "0.0025～0.014（比 k = 100 時小了 1.5～8 倍）", "10⁻⁴ 以下"],
+    "sqp": ["10 步內", "2 步內", "幾乎沒前進（‖x − x*‖ ≥ 1）", "6～15 步"],
+    "admm": ["50 步內", "不會，有些 x 在三角形外", "150 步內停不下來", "34～200 步停止"],
 }
 
 
@@ -399,6 +401,9 @@ def _q(page: str, n: int) -> dict:
     ("projected-gradient", 3, ["第 33 步"]), ("projected-gradient", 4, ["1.41"]),
     ("frank-wolfe", 2, ["299 次"]), ("frank-wolfe", 3, ["0.0070"]),
     ("frank-wolfe", 4, ["5.7 × 10⁻⁶", "折返 3 次"]),
+    ("sqp", 1, ["第 7 步", "2.2 × 10⁻¹⁶"]), ("sqp", 2, ["第 2 步"]), ("sqp", 3, ["1.40"]),
+    ("sqp", 4, ["第 10 步"]), ("admm", 1, ["第 34 步", "6.0 × 10⁻¹⁰"]),
+    ("admm", 2, ["第 72 步", "1.3 × 10⁻⁹"]), ("admm", 3, ["0.90"]), ("admm", 4, ["第 167 步"]),
 ])
 def test_quoted_numbers_are_the_measured_ones(page: str, n: int, quoted: list[str]) -> None:
     """Each number an explanation quotes appears in the text and matches the measure."""
