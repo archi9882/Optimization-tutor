@@ -139,12 +139,20 @@ def test_maratos_effect_full_steps_would_be_faster() -> None:
 
     full = run(SQP.adapter(full_step), p, x0, {}, 50)
     assert full["n_iter"] == 5
-    x1 = tuple(full["xs"][1])
+    # Step 2 (step 1 still uses B = ∇²f because λ0 = 0): the Newton step from x_1.
+    x = tuple(ls["xs"][1])
+    B, _ = SQP.hessian_lagrangian(x, ls["info"][1]["λ"], p.hess, p.constraints)
+    assert B[0][0] == pytest.approx(1.0, abs=0.01)             # ≈ ∇²L = I
+    d, _ = SQP.qp_subproblem(B, p.grad(x), [(c.kind, c.grad(x), c.g(x)) for c in p.constraints])
+    xf = (x[0] + d[0], x[1] + d[1])
     h = p.constraints[0].g
-    assert p.f(x1) < p.f(x0) and abs(h(x1)) == pytest.approx(1.56e-4, rel=0.01)
-    assert abs(h(x0)) == pytest.approx(4.4e-7, rel=0.01)
-    mu = ls["info"][1]["μ"]
-    assert SQP.merit(x1, mu, p.f, p.constraints) > SQP.merit(x0, mu, p.f, p.constraints)
+    assert math.dist(x, (1, 0)) == pytest.approx(0.0438, abs=5e-5)
+    assert math.dist(xf, (1, 0)) == pytest.approx(9.6e-4, rel=0.01)
+    assert (round(p.f(x), 6), round(p.f(xf), 6)) == (-0.998985, -0.997123)
+    assert f"{abs(h(x)):.1e}" == "3.9e-05" and f"{abs(h(xf)):.1e}" == "1.9e-03"
+    mu = ls["info"][2]["μ"]
+    assert SQP.merit(xf, mu, p.f, p.constraints) > SQP.merit(x, mu, p.f, p.constraints)
+    assert ls["info"][2]["步長 t"] == 0.125
 
 
 def test_sqp_can_converge_to_a_maximum() -> None:
@@ -237,3 +245,13 @@ def test_lasso_measure_has_distance_but_no_violation() -> None:
     assert "違反量" not in predict.summary(m, 1e-10)
     with pytest.raises(ValueError, match="constraints to violate"):
         predict.check({"stays_feasible": True}, m)
+
+
+def test_damped_bfgs_stalls_on_the_left_of_the_circle() -> None:
+    bfgs = run_named("sqp_bfgs", "maratos", x0=(-0.47, 0.004), n_iter=500)
+    assert bfgs["status"] == "max_iter"
+    assert bfgs["xs"][-1] == pytest.approx([-0.985, 0.173], abs=5e-4)
+    assert f"{math.dist(bfgs['xs'][-1], (1, 0)):.2f}" == "1.99"
+    assert sum(i["步長 t"] < 1e-6 for i in bfgs["info"][1:]) == 114
+    exact = run_named("sqp", "maratos", x0=(-0.47, 0.004), n_iter=500)
+    assert exact["n_iter"] == 52 and math.dist(exact["xs"][-1], (1, 0)) < 1e-12

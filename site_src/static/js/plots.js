@@ -371,7 +371,9 @@ export class ContourPlot {
     };
     cons.forEach((k, n) => {
       const segs = isoSegments(k.z, 0);
-      c.strokeStyle = k.kind === "eq" ? css("--accent") : css("--ink-2");
+      // Equalities: thicker, in the ink colour (the accent colour is also the
+      // first series' colour, which would hide a path running along the curve).
+      c.strokeStyle = css("--ink-2");
       c.lineWidth = k.kind === "eq" ? 2 : 1.5;
       c.beginPath();
       for (const [a, b, p, q] of segs) { c.moveTo(a * sx, this.h - b * sy); c.lineTo(p * sx, this.h - q * sy); }
@@ -561,6 +563,25 @@ export class ContourPlot {
       }
       c.restore();
     }
+    // Legend for second iterates (dash + mark, ADMM's z): "- - □ <label>（虛線）" top-left.
+    const marked = this.series.filter((s) => s.dash && s.mark);
+    marked.forEach((s, i) => {
+      const text = `${s.label}（虛線）`, y = 14 + i * 20;
+      c.save();
+      c.font = `12px ${css("--font")}`;
+      const tw = c.measureText(text).width;
+      c.fillStyle = surface; c.globalAlpha = 0.9;
+      c.fillRect(4, y - 9, tw + 44, 18);
+      c.globalAlpha = 1;
+      c.strokeStyle = s.color; c.lineWidth = 1.5; c.setLineDash([5, 4]);
+      c.beginPath(); c.moveTo(8, y); c.lineTo(30, y); c.stroke();
+      c.setLineDash([]);
+      c.fillStyle = surface; c.fillRect(15, y - 3.5, 7, 7);
+      c.lineWidth = 1.5; c.strokeRect(15, y - 3.5, 7, 7);
+      c.fillStyle = css("--ink-2"); c.textAlign = "left"; c.textBaseline = "middle";
+      c.fillText(text, 36, y);
+      c.restore();
+    });
   }
 
   // Bilinear interpolation of f on the grid (for the hover read-out).

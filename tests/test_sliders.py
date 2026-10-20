@@ -18,7 +18,7 @@ PAGES = ROOT / "content" / "algorithms"
 # "problem" (problem sliders) or "lab" (迭代數).
 QUOTED: dict[str, list[tuple[str, str, float]]] = {
     "admm": [("admm", "rho", v) for v in (0.1, 0.3, 1, 2, 3, 5, 10, 30, 100)]
-    + [("lab", "n_iter", 500)],
+    + [("lab", "n_iter", 500), ("lab", "n_iter", 250)],
     "adagrad": [("problem", "theta_deg", 45), ("adagrad", "lr", 1.5), ("adagrad", "lr", 0.5),
                 ("lab", "n_iter", 300)],
     "adam": [("problem", "theta_deg", 45), ("adam", "lr", 0.01), ("adam", "lr", 0.1),

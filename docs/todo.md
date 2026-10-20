@@ -42,7 +42,7 @@
 - [ ] 測試函數 8 個（Sphere、Ackley、Levy、Cross-in-tray、Bukin、Rastrigin、Bohachevsky、Griewank）＋「測試函數圖鑑」頁
 - [ ] 啟發式家族：模擬退火、GA、DE、PSO、ACO、CMA-ES、SCE-UA
   - 以自然現象命名的演算法：待使用者決定只選幾個或全部收錄；預設只收 ABC，另寫一頁總覽
-- [ ] 有限制最佳化後半：SQP、ADMM
+- [x] 有限制最佳化後半：SQP、ADMM（已通過獨立測試，等候 HP5 抽查）
 - [ ] 一維搜尋：二分法、黃金分割、Wolfe 線搜尋
 - [ ] 多目標：加權和、ε-限制、NSGA-II、SPEA2、MOEA/D
 - [ ] 機器學習：最小平方、k-means、EM、超參數搜尋
