@@ -4,6 +4,9 @@
 //                     series with dash + mark: a second iterate such as ADMM's z);
 //                     with setRegion() also renderer ②: feasible polygon,
 //                     constraint lines and iso-objective lines for LP/QP
+//                     series with pop: renderer ③, a population per step
+//                     (points, PSO moves, best-so-far marker); grid.local_minima:
+//                     hollow circles at notable local minima (test functions)
 //   ConvergencePlot – f(x_k) − f* on a log axis, one line per optimizer
 // Both read colors from CSS custom properties so they follow the theme.
 
@@ -468,7 +471,51 @@ export class ContourPlot {
       c.moveTo(px, py - 5); c.lineTo(px, py + 5);
       c.stroke();
     }
+    if (this.grid.local_minima) this.drawLocalMinima(c);
     this.cache = off;
+  }
+
+  // Test functions: notable local minima as hollow circles (global minima are the + marks).
+  drawLocalMinima(c) {
+    c.save();
+    c.strokeStyle = css("--ink-2"); c.lineWidth = 1.25; c.globalAlpha = 0.8;
+    for (const [x, y] of this.grid.local_minima) {
+      const [px, py] = this.toPx(x, y);
+      c.beginPath(); c.arc(px, py, 3.5, 0, 7); c.stroke();
+    }
+    c.restore();
+  }
+
+  // Renderer ③: the population of step n − 1 (dots), each point's last move
+  // (s.trail: PSO velocities), the best-so-far path (thin) and a ring on the best point.
+  drawPopulation(c, s, n, surface) {
+    const i = Math.min(n, s.pop.length) - 1;
+    c.save();
+    c.strokeStyle = s.color; c.lineJoin = "round";
+    c.lineWidth = 1.5; c.globalAlpha = 0.55;
+    c.beginPath();
+    s.xs.slice(0, n).forEach(([x, y], k) => { const [px, py] = this.toPx(x, y); k ? c.lineTo(px, py) : c.moveTo(px, py); });
+    c.stroke();
+    if (s.trail && i > 0) {
+      c.lineWidth = 1.25; c.globalAlpha = 0.7;
+      c.beginPath();
+      s.pop[i].forEach((q, j) => {
+        const [ax, ay] = this.toPx(...s.pop[i - 1][j]), [bx, by] = this.toPx(...q);
+        c.moveTo(ax, ay); c.lineTo(bx, by);
+      });
+      c.stroke();
+    }
+    c.globalAlpha = 1; c.fillStyle = s.color; c.strokeStyle = surface; c.lineWidth = 1;
+    for (const q of s.pop[i]) {
+      const [px, py] = this.toPx(...q);
+      c.beginPath(); c.arc(px, py, 3.25, 0, 7); c.fill(); c.stroke();
+    }
+    const [bx, by] = this.toPx(...s.xs[n - 1]);
+    c.lineWidth = 5; c.strokeStyle = surface;
+    c.beginPath(); c.arc(bx, by, 8, 0, 7); c.stroke();
+    c.lineWidth = 2.5; c.strokeStyle = s.color;
+    c.beginPath(); c.arc(bx, by, 8, 0, 7); c.stroke();
+    c.restore();
   }
 
   draw() {
@@ -484,6 +531,7 @@ export class ContourPlot {
     for (const s of this.series) {
       const n = Math.min(s.xs.length, this.frame + 1);
       if (n < 1) continue;
+      if (s.pop) { this.drawPopulation(c, s, n, surface); continue; }
       c.save();
       c.strokeStyle = s.color;
       c.lineWidth = s.dash ? 1.5 : 2;

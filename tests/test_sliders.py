@@ -32,6 +32,14 @@ QUOTED: dict[str, list[tuple[str, str, float]]] = {
                            ("coordinate", "omega", 1), ("coordinate", "omega", 1.5),
                            ("coordinate", "omega", 1.95), ("lab", "n_iter", 300)],
     "frank-wolfe": [("projected_gradient", "lr", 0.1)],
+    "genetic-algorithm": [("ga", "pm", 0.0), ("ga", "pc", 0.0), ("ga", "n_elite", 0),
+                          ("ga", "eta_m", 1), ("ga", "n_pop", 10), ("ga", "n_pop", 40)]
+    + [("ga", "seed", s) for s in (0, 99)],
+    "pso": [("pso", "w", v) for v in (0, 0.4, 0.6, 0.72, 0.8, 0.9, 1.0)]
+    + [("pso", "n_pop", 10), ("pso", "n_pop", 40), ("pso", "c1", 0), ("pso", "c2", 0),
+       ("pso", "c1", 2), ("pso", "c2", 2)] + [("pso", "seed", s) for s in (0, 59, 60, 85, 99)],
+    "test-functions": [("nelder_mead", "size", v) for v in (0.2, 0.5, 1.0, 1.5, 2.0)]
+    + [("gd", "lr", 0.002)],
     "gd": [("gd", "lr", v) for v in (0.05, 0.15, 0.21, 0.001, 0.002, 0.003)]
     + [("problem", "kappa", 50), ("problem", "kappa", 10)],
     "lbfgs": [("lbfgs", "m", v) for v in (1, 2, 5)] + [("lab", "n_iter", 300)],

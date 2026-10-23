@@ -33,6 +33,17 @@ def run(step: StepFn, problem: Problem, x0: Vec, params: dict,
       z            a second iterate drawn dashed next to x (ADMM's z) ->
                    out["zs"][k] belongs to xs[k]; z_used is the z the first
                    step started from (default x0)
+      pop          population-based methods (renderer 3): the current points
+                   -> out["pop"][k] belongs to xs[k] (rounded to the view's
+                   resolution, see pop_decimals); fmean -> out["fmean"][k]
+                   is their mean f; pop_trail True: draw each point's move
+                   from the previous step (PSO velocities) -> out["pop_trail"]
+
+    A step function with an `init(x0, problem, params) -> (x, state)` attribute
+    is a population method: init builds the first population (x0 is one of its
+    points) and returns its best point, which becomes xs[0]. Such methods
+    never stop on a small gradient (they do not use it) and run all n_iter steps
+    unless their own rule stops them.
 
     Constrained problems never stop on a small gradient (grad f != 0 at a
     constrained optimum); they report the final constraint violation. Neither
@@ -40,8 +51,17 @@ def run(step: StepFn, problem: Problem, x0: Vec, params: dict,
     """
     x = (float(x0[0]), float(x0[1]))
     state: dict = {}
+    init = getattr(step, "init", None)
+    if init is not None:
+        x, state = init(x, problem, params)
+        x = (float(x[0]), float(x[1]))
     xs = [list(x)]
     fs = [problem.f(x)]
+    pops: list = []                     # population per iterate (see docstring)
+    fmeans: list = []
+    if "pop" in state:
+        pops.append(pop_round(state["pop"], problem))
+        fmeans.append(float(f"{state['fmean']:.6g}"))
     status = "max_iter"
     radii: list[float] = []             # trust-region radius used at each step
     polys: list = []                    # per-iterate geometry (see docstring)
@@ -65,12 +85,15 @@ def run(step: StepFn, problem: Problem, x0: Vec, params: dict,
             if not zs:
                 zs.append(list(state.get("z_used", xs[0])))
             zs.append([float(state["z"][0]), float(state["z"][1])])
+        if "pop" in state:
+            pops.append(pop_round(state["pop"], problem))
+            fmeans.append(float(f"{state['fmean']:.6g}"))
         if "poly" in state:
             if not polys:
                 polys.append(state.get("poly_used"))
             polys.append(state["poly"])
         g = problem.grad(x)
-        if not by_distance(problem) and math.hypot(g[0], g[1]) < tol:
+        if init is None and not by_distance(problem) and math.hypot(g[0], g[1]) < tol:
             status = "converged"
             break
         if state.get("stop"):
@@ -93,11 +116,29 @@ def run(step: StepFn, problem: Problem, x0: Vec, params: dict,
         out["dots"] = True
     if zs:
         out["zs"] = zs
+    if pops:
+        out["pop"] = pops
+        out["fmean"] = fmeans
+        if state.get("pop_trail"):
+            out["pop_trail"] = True
     if by_distance(problem):
         out["violation"] = violation(problem, tuple(xs[-1]))
         if "message" in state:
             out["message"] = state["message"]
     return out
+
+
+def pop_decimals(problem: Problem) -> int:
+    """Decimals that resolve 1/10000 of the view's larger side (enough to draw)."""
+    x0, x1, y0, y1 = problem.bounds
+    span = max(x1 - x0, y1 - y0)
+    return max(0, math.ceil(-math.log10(span / 1e4) - 1e-9))
+
+
+def pop_round(pop, problem: Problem) -> list:
+    """A population as embedded in the trace: [[x1, x2], ...] rounded for drawing."""
+    d = pop_decimals(problem)
+    return [[round(float(p[0]), d) + 0.0, round(float(p[1]), d) + 0.0] for p in pop]
 
 
 def run_named(algo_id: str, problem_id: str, problem_params: dict | None = None,

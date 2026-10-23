@@ -23,6 +23,7 @@ from .dual_simplex import EXERCISE as DUAL_SIMPLEX
 from .dynamic_programming import EXERCISE as DYNAMIC_PROGRAMMING
 from .frank_wolfe import EXERCISE as FRANK_WOLFE
 from .gauss_newton import EXERCISE as GAUSS_NEWTON
+from .ga import EXERCISE as GA
 from .gd import EXERCISE as GD
 from .greedy import EXERCISE as GREEDY
 from .hungarian import EXERCISE as HUNGARIAN
@@ -36,6 +37,7 @@ from .newton import EXERCISE as NEWTON
 from .pattern_search import EXERCISE as PATTERN_SEARCH
 from .penalty import EXERCISE as PENALTY
 from .powell import EXERCISE as POWELL
+from .pso import EXERCISE as PSO
 from .projected_gradient import EXERCISE as PROJECTED_GRADIENT
 from .rmsprop import EXERCISE as RMSPROP
 from .sgd import EXERCISE as SGD
@@ -52,7 +54,7 @@ EXERCISES: dict[str, Exercise] = {e.id: e for e in [
     BRANCH_BOUND, CUTTING_PLANE, DYNAMIC_PROGRAMMING, GREEDY, HUNGARIAN, TWO_OPT, TABU,
     NELDER_MEAD, POWELL, PATTERN_SEARCH,
     PENALTY, BARRIER_NL, AUGMENTED_LAGRANGIAN, PROJECTED_GRADIENT, FRANK_WOLFE,
-    SQP, ADMM]}
+    SQP, ADMM, PSO, GA]}
 
 
 def grade_json(exercise_id: str, source: str) -> str:

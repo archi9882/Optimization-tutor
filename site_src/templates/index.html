@@ -2,7 +2,7 @@
 {% block content %}
 <section class="hero">
   <h1>最佳化演算法圖鑑</h1>
-  <p class="lede">{{ cat.algorithms|length }} 種跨領域常用的最佳化演算法。每一種都依同一個結構整理：定義、應用場景、解決什麼問題、動畫演示，以及虛擬碼、示範程式與在瀏覽器裡執行的挖空練習。</p>
+  <p class="lede">{{ cat.algorithms|rejectattr("family", "equalto", "benchmark")|list|length }} 種跨領域常用的最佳化演算法。每一種都依同一個結構整理：定義、應用場景、解決什麼問題、動畫演示，以及虛擬碼、示範程式與在瀏覽器裡執行的挖空練習。</p>
 </section>
 
 <section class="filters" aria-label="篩選">

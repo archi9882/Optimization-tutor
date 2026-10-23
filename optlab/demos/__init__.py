@@ -11,7 +11,7 @@ import inspect
 from types import ModuleType
 
 from . import (active_set, admm, adagrad, adam, augmented_lagrangian, barrier, barrier_nl,
-               bfgs, branch_bound, coordinate, cutting_plane, frank_wolfe, dual_simplex, dynamic_programming, gauss_newton, gd,
+               bfgs, branch_bound, coordinate, ga, pso, cutting_plane, frank_wolfe, dual_simplex, dynamic_programming, gauss_newton, gd,
                greedy, hungarian, lbfgs, lm, momentum, ncg, nelder_mead, nesterov,
                newton, pattern_search, penalty, powell, projected_gradient, rmsprop,
                sgd, simplex, sqp, tabu,
@@ -33,6 +33,7 @@ MODULES: dict[str, ModuleType] = {
     "augmented_lagrangian": augmented_lagrangian,
     "projected_gradient": projected_gradient, "frank_wolfe": frank_wolfe,
     "sqp": sqp, "admm": admm,
+    "pso": pso, "ga": ga,
 }
 
 

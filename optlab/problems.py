@@ -51,6 +51,12 @@ class Problem:
     # Nonsmooth term: with l1 > 0 the objective is f(x) = s(x) + l1 * ||x||_1, where
     # grad and hess belong to the smooth part s only (used by splitting methods).
     l1: float = 0.0
+    # Test functions for global methods (optlab.testfunctions): the usual search
+    # domain (bounds is the view), a few notable local minima, and a flag that
+    # adds these to the contour grid and enables the found_global predicate.
+    domain: tuple[float, float, float, float] | None = None
+    local_minima: list[Vec] = field(default_factory=list)
+    test_function: bool = False
 
 
 def quadratic(kappa: float = 10.0, theta_deg: float = 0.0) -> Problem:
@@ -434,6 +440,8 @@ def make_problem(problem_id: str, **params: float) -> Problem:
                 "fert_eq": fert_equality, "fert_disk": fert_disk,
                 "reservoir": reservoir, "rosen_disk": rosenbrock_disk,
                 "maratos": maratos, "fert_lasso": fert_lasso}
+    from .testfunctions import BUILDERS as _TEST
+    builders |= _TEST
     if problem_id not in builders:
         raise KeyError(f"unknown problem: {problem_id}")
     return builders[problem_id](**params)
@@ -457,6 +465,9 @@ def grid(problem: Problem, nx: int = 120, ny: int = 100) -> dict:
                               for c in problem.constraints]
     if problem.unconstrained and by_distance(problem):
         out["unconstrained"] = list(problem.unconstrained)
+    if problem.test_function:
+        out["local_minima"] = [list(m) for m in problem.local_minima]
+        out["domain"] = list(problem.domain or problem.bounds)
     if problem.l1:
         out["distance"] = True       # no constraints, but the lab plots ||x - x*||
         out["unconstrained_label"] = "不含 ℓ1 的最小值"

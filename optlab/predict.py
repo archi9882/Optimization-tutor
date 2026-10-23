@@ -29,6 +29,15 @@ Derivative-free methods (the trace reports its f-evaluation count):
     evals_below       int: f evaluations of the whole run < N
     evals_above       int: f evaluations of the whole run >= N
 
+Test functions (optlab.testfunctions; measure() is given the problem) and
+population methods (the trace records "pop"):
+
+    found_global      bool: the last (best) point is within FOUND_TOL of one
+                      of the problem's listed global minima (a diverged run
+                      never finds it); needs a test function
+    diversity_below/above  float: mean distance of the last population to its
+                      centroid < X / >= X; needs a population method
+
 Constrained problems and problems with an l1 term (measure() is given the
 problem; the violation keys need constraints). The lab plots ||x - x*|| there,
 not f - f*, so the f - f* keys above are refused and these
@@ -53,6 +62,14 @@ from .problems import Problem, by_distance, violation
 Measure = dict
 
 FEAS_TOL = 1e-9      # stays_feasible: an iterate counts as feasible up to this
+FOUND_TOL = 1e-2     # found_global: distance to the nearest listed global minimum
+
+
+def diversity(pop: list) -> float:
+    """Mean distance of the points to their centroid (0: the population collapsed)."""
+    cx = sum(p[0] for p in pop) / len(pop)
+    cy = sum(p[1] for p in pop) / len(pop)
+    return sum(math.hypot(p[0] - cx, p[1] - cy) for p in pop) / len(pop)
 
 
 def measure(trace: dict, fstar: float, reach_tol: float,
@@ -77,6 +94,11 @@ def measure(trace: dict, fstar: float, reach_tol: float,
          "final_gap": gap if math.isfinite(gap) else None}
     if "evals" in trace:
         m["evals"] = int(trace["evals"])
+    if problem is not None and problem.test_function and not by_distance(problem):
+        m["global_dist"] = None if trace["status"] == "diverged" else \
+            min(math.dist(xs[-1], g) for g in problem.minima)
+    if "pop" in trace:
+        m["diversity"] = diversity(trace["pop"][-1])
     if problem is not None and by_distance(problem):
         diverged = trace["status"] == "diverged"
         xstar = problem.minima[0]
@@ -132,6 +154,9 @@ CHECKS = {
     "max_violation_below": lambda m, v: _num(m, "max_violation") < v,
     "max_violation_above": lambda m, v: _num(m, "max_violation") >= v,
     "stays_feasible": lambda m, v: (_num(m, "max_violation") <= FEAS_TOL) == v,
+    "found_global": lambda m, v: (_num(m, "global_dist") < FOUND_TOL) == v,
+    "diversity_below": lambda m, v: m["diversity"] < v,
+    "diversity_above": lambda m, v: m["diversity"] >= v,
     "outer_min": lambda m, v: m["outer"] >= v,
     "outer_max": lambda m, v: m["outer"] <= v,
 }
@@ -139,6 +164,7 @@ CHECKS = {
 # Keys that only make sense for one kind of run (checked against the measure).
 F_GAP_KEYS = {"reach_within", "not_reach_within", "final_gap_below", "final_gap_above"}
 EVALS_KEYS = {"evals_below", "evals_above"}
+DIVERSITY_KEYS = {"diversity_below", "diversity_above"}
 CONSTRAINED_KEYS = {"final_dist_below", "final_dist_above", "final_violation_below",
                     "final_violation_above", "max_violation_below", "max_violation_above",
                     "stays_feasible", "outer_min", "outer_max"}
@@ -148,9 +174,11 @@ NEW_INT_KEYS = {"stops_within", "not_stops_within", "evals_below", "evals_above"
                 "outer_min", "outer_max"}
 # (a, b): the predicate is empty unless when[a] < when[b]; outer_min/max: unless <=.
 EMPTY_IF_NOT_BELOW = [(f"{q}_above", f"{q}_below") for q in
-                      ("evals", "final_dist", "final_violation", "max_violation")] + \
+                      ("evals", "final_dist", "final_violation", "max_violation",
+                       "diversity")] + \
     [("not_stops_within", "stops_within")]
-POSITIVE_KEYS = CONSTRAINED_KEYS - {"stays_feasible", "outer_min", "outer_max"}
+POSITIVE_KEYS = (CONSTRAINED_KEYS - {"stays_feasible", "outer_min", "outer_max"}) \
+    | DIVERSITY_KEYS
 
 STATUS_TEXT = {"diverged": "發散", "converged": "梯度歸零而停止",
                "stopped": "演算法自行停止", "max_iter": "跑滿迭代數"}
@@ -171,7 +199,8 @@ RANGE_PAIRS = {f"{q}_{side}": (name, f"{q}_{'below' if side == 'above' else 'abo
                                side == "above")
                for q, name in [("evals", "整次執行的 f 計算次數"), ("final_dist", "最後 ‖x−x*‖"),
                                ("final_violation", "最後的違反量"),
-                               ("max_violation", "路徑上最大違反量")]
+                               ("max_violation", "路徑上最大違反量"),
+                               ("diversity", "最後族群離重心的平均距離")]
                for side in ("above", "below")}
 
 
@@ -208,6 +237,10 @@ def criterion(when: dict, reach_tol: float) -> str:
         "max_violation_above": lambda v: f"路徑上最大違反量 ≥ {_sci(v)}",
         "stays_feasible": lambda v: (f"每個迭代點都在可行域內（違反量 ≤ {feas}）" if v
                                      else f"有迭代點離開可行域（違反量 > {feas}）"),
+        "found_global": lambda v: (f"最後的最佳點離全域最小值不到 {_sci(FOUND_TOL)}" if v
+                                   else f"最後的最佳點離每個全域最小值都至少 {_sci(FOUND_TOL)}"),
+        "diversity_below": lambda v: f"最後族群離重心的平均距離 < {_sci(v)}",
+        "diversity_above": lambda v: f"最後族群離重心的平均距離 ≥ {_sci(v)}",
         "outer_min": lambda v: f"完成的外圈 ≥ {v} 輪",
         "outer_max": lambda v: "沒有完成任何一輪外圈" if v == 0 else f"完成的外圈 ≤ {v} 輪",
     }
@@ -261,6 +294,10 @@ def summary(m: Measure, reach_tol: float) -> str:
     out = f"{reach} · 折返 {m['zigzag']} 次 · f 上升 {m['rises']} 步"
     if "evals" in m:
         out += f" · {_stop(m)}，共 {m['evals']} 次 f 計算"
+    if "global_dist" in m:
+        out += f" · 最後 f−f* = {fmt(m['final_gap'])} · 離全域最小值 {fmt(m['global_dist'])}"
+    if "diversity" in m:
+        out += f" · 族群離重心平均 {fmt(m['diversity'])}"
     return out
 
 
@@ -277,9 +314,9 @@ def validate(when: dict) -> None:
             if not isinstance(names, list) or not names or \
                     any(s not in STATUS_TEXT for s in names):
                 raise ValueError(f"status must be one or more of {sorted(STATUS_TEXT)}, got {v!r}")
-        elif k == "stays_feasible":
+        elif k in ("stays_feasible", "found_global"):
             if not isinstance(v, bool):
-                raise ValueError(f"stays_feasible needs true or false, got {v!r}")
+                raise ValueError(f"{k} needs true or false, got {v!r}")
         elif isinstance(v, bool) or not isinstance(v, (int, float)):
             raise ValueError(f"{k} needs a number, got {v!r}")
         elif k in NEW_INT_KEYS and (not float(v).is_integer() or v < 0):
@@ -309,6 +346,10 @@ def applicable(when: dict, m: Measure) -> None:
             raise ValueError(f"{k} needs constraints to violate (this problem has an l1 term only)")
         if k in EVALS_KEYS and "evals" not in m:
             raise ValueError(f"{k} needs a method that counts f evaluations")
+        if k == "found_global" and "global_dist" not in m:
+            raise ValueError("found_global needs a test function with listed global minima")
+        if k in DIVERSITY_KEYS and "diversity" not in m:
+            raise ValueError(f"{k} needs a population method (the trace has no population)")
 
 
 def check(when: dict, m: Measure) -> bool:

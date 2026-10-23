@@ -136,6 +136,23 @@ OPTIMIZERS: dict[str, Optimizer] = {
         Optimizer("admm", "ADMM", [Param("rho", 1.0, 0.01, 100.0, True, "懲罰係數 ρ")],
                   lab_step("admm"), handles_l1=True),
         Optimizer("sqp_bfgs", "SQP（阻尼 BFGS）", [], _sqp.bfgs_adapter(_sqp.FUNC)),
+        # ---- population-based (renderer 3: optlab.trace records "pop") ----
+        Optimizer("pso", "PSO",
+                  [Param("n_pop", 20, 10, 40, False, "粒子數 N", integer=True),
+                   Param("w", 0.72, 0.0, 1.2, False, "慣性 w"),
+                   Param("c1", 1.5, 0.0, 3.0, False, "認知 c₁"),
+                   Param("c2", 1.5, 0.0, 3.0, False, "社會 c₂"),
+                   Param("seed", 0, 0, 99, False, "亂數種子", integer=True)],
+                  lab_step("pso")),
+        Optimizer("ga", "GA",
+                  [Param("n_pop", 20, 10, 40, False, "族群大小 N", integer=True),
+                   Param("n_elite", 2, 0, 10, False, "菁英數 E", integer=True),
+                   Param("pc", 0.9, 0.0, 1.0, False, "交配率 p_c"),
+                   Param("eta_c", 15, 1, 50, False, "SBX η_c", integer=True),
+                   Param("pm", 0.5, 0.0, 1.0, False, "突變率 p_m"),
+                   Param("eta_m", 20, 1, 50, False, "突變 η_m", integer=True),
+                   Param("seed", 0, 0, 99, False, "亂數種子", integer=True)],
+                  lab_step("ga")),
     ]
 }
 

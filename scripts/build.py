@@ -473,6 +473,94 @@ def combo_data(cfg: dict) -> dict:
             "result": api.combo_lab(spec)}
 
 
+GALLERY_KEYS = {"id", "formula", "hard"}
+GALLERY_NX = 140
+
+
+def _num(v: float) -> str:
+    """A coordinate or value on a gallery card: up to 6 decimals, no trailing zeros."""
+    t = f"{v:.6f}".rstrip("0").rstrip(".")
+    return "0" if t in ("-0", "") else t.replace("-", "−")
+
+
+def _pt(p) -> str:
+    return f"({_num(p[0])}, {_num(p[1])})"
+
+
+def gallery_entries(cfg: dict) -> list[tuple[dict, object]]:
+    """[(frontmatter item, Problem)] of a gallery; unknown ids or keys fail the build."""
+    items = cfg.get("functions")
+    if not isinstance(items, list) or not items:
+        raise ValueError("gallery: needs a non-empty functions: list")
+    out, seen = [], set()
+    for it in items:
+        _known("gallery function", it, GALLERY_KEYS)
+        for key in GALLERY_KEYS:
+            if not isinstance(it.get(key), str) or not it[key].strip():
+                raise ValueError(f"gallery function {it.get('id')!r} needs {key!r}")
+        if it["id"] in seen:
+            raise ValueError(f"gallery: duplicate function {it['id']!r}")
+        seen.add(it["id"])
+        out.append((it, make_problem(it["id"])))
+    if cfg.get("default", items[0]["id"]) not in seen:
+        raise ValueError(f"gallery: default {cfg.get('default')!r} is not in functions")
+    return out
+
+
+def gallery_data(cfg: dict) -> dict:
+    """Contour grids of every gallery function (z to 4 significant digits).
+
+    Only the default function's grid is embedded in the page; the others are
+    written to data/gallery/<id>.json by build() and fetched when chosen
+    (all eleven inline would add ~380 kB gzipped).
+    """
+    fns = []
+    for it, prob in gallery_entries(cfg):
+        x0, x1, y0, y1 = prob.bounds
+        ny = max(40, round(GALLERY_NX * (y1 - y0) / (x1 - x0)))
+        g = api.problem_grid({"problem": it["id"]}, GALLERY_NX, ny)
+        g = round_sig({k: v for k, v in g.items() if k not in ("note", "x0")}, 6)
+        g["z"] = round_sig(g["z"], 4)
+        fns.append({"id": it["id"], "name": prob.name, "grid": g})
+    return {"default": cfg.get("default", fns[0]["id"]), "functions": fns}
+
+
+def _inline_md(text: str) -> str:
+    """Markdown of one paragraph without its <p> wrapper."""
+    html = render_markdown(text.strip()).strip()
+    return html[3:-4] if html.startswith("<p>") and html.endswith("</p>") else html
+
+
+def gallery_html(cfg: dict) -> str:
+    """One static card per function (formula, domain, minima, why it is hard).
+
+    Rendered at build time so KaTeX typesets every formula on load; gallery.js
+    shows one card at a time next to the contour plot (without JS: all cards).
+    """
+    cards = []
+    for it, prob in gallery_entries(cfg):
+        dom = prob.domain or prob.bounds
+        view = "" if tuple(dom) == tuple(prob.bounds) else \
+            f"（圖中只畫 $x_1\\in[{_num(prob.bounds[0])}, {_num(prob.bounds[1])}]$、" \
+            f"$x_2\\in[{_num(prob.bounds[2])}, {_num(prob.bounds[3])}]$）"
+        mins = "、".join(_pt(m) for m in prob.minima)
+        n_loc = len(prob.local_minima)
+        loc = (f"圖中以 ○ 標出離全域最小值最近的 {n_loc} 個局部最小值，例如 "
+               f"{_pt(prob.local_minima[0])}，f = {_num(prob.f(prob.local_minima[0]))}。"
+               if n_loc else "")
+        dom_label = "定義域" if prob.domain else "本站畫面範圍"
+        rows = (f"<p><strong>{dom_label}：</strong>$x_1\\in[{_num(dom[0])}, {_num(dom[1])}]$、"
+                f"$x_2\\in[{_num(dom[2])}, {_num(dom[3])}]${view}</p>\n"
+                f"<p><strong>全域最小值：</strong>$f^*={_num(prob.fstar)}$，位於 {mins}"
+                f"{'（四個一樣深）' if len(prob.minima) == 4 else ''}。{loc}</p>")
+        cards.append(
+            f'<section class="tf-card" data-fn="{it["id"]}" id="tf-{it["id"]}">\n'
+            f'<h3>{htmlmod.escape(prob.name)}</h3>\n'
+            f'<p class="tf-formula">$${htmlmod.escape(it["formula"].strip())}$$</p>\n{rows}\n'
+            f'<p><strong>難在哪裡：</strong>{_inline_md(it["hard"])}</p>\n</section>')
+    return '<div id="gallery" class="gallery">\n' + "\n".join(cards) + "\n</div>"
+
+
 def practice_data(ex_id: str) -> dict:
     """Skeleton, hints, solution and the plot background for one exercise."""
     ex = EXERCISES[ex_id]
@@ -515,7 +603,7 @@ def load_catalog() -> dict:
         md = CONTENT / "algorithms" / f"{a['id']}.md"
         meta = split_frontmatter(md.read_text("utf-8"))[0] if md.exists() else {}
         a["status"] = {"page": md.exists(),
-                       "lab": "lab" in meta or "lp" in meta or "combo" in meta,
+                       "lab": "lab" in meta or "lp" in meta or "combo" in meta or "gallery" in meta,
                        "practice": "practice" in meta}
     cat["by_id"] = {a["id"]: a for a in cat["algorithms"]}
     return cat
@@ -594,6 +682,16 @@ def build(out: Path = OUT, vendor: Path | None = None) -> None:
         lab = lab_data(meta["lab"]) if "lab" in meta else None
         lpd = lp_data(meta["lp"]) if "lp" in meta else None
         combod = combo_data(meta["combo"]) if "combo" in meta else None
+        galleryd = gallery_data(meta["gallery"]) if "gallery" in meta else None
+        if galleryd:
+            html = html.replace("<!-- gallery -->", gallery_html(meta["gallery"]))
+            (OUT / "data" / "gallery").mkdir(parents=True, exist_ok=True)
+            for fn in galleryd["functions"]:
+                if fn["id"] != galleryd["default"]:
+                    grid = fn.pop("grid")
+                    (OUT / "data" / "gallery" / f"{fn['id']}.json").write_text(
+                        json.dumps(grid, ensure_ascii=False), "utf-8")
+                    fn["src"] = f"../data/gallery/{fn['id']}.json"
         attach_predict(a["id"], meta, lab, lpd, combod)
         practice = practice_data(meta["practice"]) if "practice" in meta \
             else None
@@ -607,6 +705,7 @@ def build(out: Path = OUT, vendor: Path | None = None) -> None:
             lp_json=to_script_json(lpd) if lpd else "",
             combo_json=to_script_json(combod) if combod else "",
             practice_json=to_script_json(practice) if practice else "",
+            gallery_json=to_script_json(galleryd) if galleryd else "",
             **common), "utf-8")
 
     cards = [{k: a[k] for k in ("id", "name", "en", "family", "problem",

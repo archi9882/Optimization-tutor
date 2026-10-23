@@ -171,6 +171,26 @@
   "sha": "e57d95447ddc",
   "q": "Q3. 梯度下降和數值解 ODE 有什麼關係？"
  },
+ "genetic-algorithm#q1": {
+  "sha": "3a7edeab7bf0",
+  "q": "Q1. 交配與突變各自負責什麼？只留一個會怎樣？"
+ },
+ "genetic-algorithm#q2": {
+  "sha": "9ef526bcd7a6",
+  "q": "Q2. 為什麼要保留菁英？"
+ },
+ "genetic-algorithm#q3": {
+  "sha": "2fd1245a4bb1",
+  "q": "Q3. 二元錦標賽的選擇壓力有多大？怎麼調？"
+ },
+ "genetic-algorithm#q4": {
+  "sha": "29a2cde1496b",
+  "q": "Q4. 實數編碼和二進位編碼的 GA 有什麼差別？為什麼本頁用實數編碼？"
+ },
+ "genetic-algorithm#q5": {
+  "sha": "888c54b9710c",
+  "q": "Q5. GA 找到了一組水文模式參數，你怎麼判斷可不可信？"
+ },
  "greedy#q1": {
   "sha": "1016caeda7ca",
   "q": "Q1. 貪婪法什麼時候保證最優？"
@@ -339,6 +359,26 @@
   "sha": "6632a859876a",
   "q": "Q3. 什麼時候該用投影梯度，什麼時候該用 Frank-Wolfe？"
  },
+ "pso#q1": {
+  "sha": "d6ddd3b6a997",
+  "q": "Q1. PSO 的三項（慣性、認知、社會）各自的作用？拿掉社會項會怎樣？"
+ },
+ "pso#q2": {
+  "sha": "70727bfc71eb",
+  "q": "Q2. 為什麼慣性 w 要小於 1？"
+ },
+ "pso#q3": {
+  "sha": "fb8aabd9fbd4",
+  "q": "Q3. PSO 和 GA 的差別？"
+ },
+ "pso#q4": {
+  "sha": "3372e0e816c4",
+  "q": "Q4. 你要用 PSO 校準一個每次模擬要 10 分鐘的水文模式，會怎麼安排？"
+ },
+ "pso#q5": {
+  "sha": "a529680eb705",
+  "q": "Q5. PSO 保證找到全域最優嗎？怎麼報告它的結果才誠實？"
+ },
  "qp-active-set#q1": {
   "sha": "3296b9af3af1",
   "q": "Q1. 有效集法中，乘數為負代表什麼？為什麼要移出那條限制？"
@@ -418,6 +458,22 @@
  "tabu-search#q3": {
   "sha": "29798ebb3b8d",
   "q": "Q3. 禁忌搜尋和模擬退火有什麼不同？"
+ },
+ "test-functions#q1": {
+  "sha": "d4fbe0c191dc",
+  "q": "Q1. 為什麼比較演算法要用函數計算次數，而不是迭代數？"
+ },
+ "test-functions#q2": {
+  "sha": "4620e3b22577",
+  "q": "Q2. Rastrigin 有上百個局部最小值，為什麼族群方法還找得到原點？"
+ },
+ "test-functions#q3": {
+  "sha": "454cae0dbe83",
+  "q": "Q3. 你要替一個 6 參數的水文模式選校準方法，會怎麼用測試函數？"
+ },
+ "test-functions#q4": {
+  "sha": "bd2c56bb2633",
+  "q": "Q4. Bukin N.6 為什麼連族群方法都找不到最小值？"
  },
  "trust-region#q1": {
   "sha": "a3118436ba14",

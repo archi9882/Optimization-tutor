@@ -21,6 +21,15 @@ const PROBLEMS = {
   rosen_disk: "Rosenbrock + 圓盤（非凸）",
   maratos: "圓上等式（Maratos 例）",
   fert_lasso: "施肥稀疏（ℓ1）",
+  // Test functions (optlab.testfunctions), offered on pages that list them.
+  sphere: "Sphere 球面",
+  ackley: "Ackley",
+  levy: "Levy",
+  cross_in_tray: "Cross-in-tray 十字托盤",
+  bukin6: "Bukin N.6",
+  rastrigin: "Rastrigin",
+  bohachevsky1: "Bohachevsky N.1",
+  griewank: "Griewank",
 };
 const problemParams = (id) => data.problem_params[id] || [];
 // "f − f* < tol 於第 k 步" uses the same tolerance as the page text.
@@ -100,6 +109,9 @@ speedSel.addEventListener("change", () => { st.speed = Number(speedSel.value); }
 const frameOut = h("span", { class: "status-line" });
 const problemNote = h("p", { class: "hint-text" });
 const stepNote = h("p", { class: "step-note", "aria-live": "polite", style: "white-space: pre-line" });
+const popNote = h("p", { class: "hint-text pop-note", hidden: "" });
+const popText = (trail) => `族群方法：小圓點是這一步的族群${trail ? "，細線是粒子這一步的移動" : ""}，◎ 是到目前為止找到的最佳點；` +
+  "右圖實線是最佳值、虛線是族群平均 f。○ 為局部最小值、＋ 為全域最小值。";
 const convTitle = convBox.querySelector(".plot-title");
 
 const touch = touchUI();
@@ -107,6 +119,7 @@ mount.append(h("div", { class: "widget lab" },
   h("div", { class: "widget-row" }, h("label", { class: "ctl" }, "問題 ", problemSel), problemParamBox, iterSlider, resetBtn, pyStatus),
   problemNote,
   h("div", { class: "lab-plots" }, contourBox, convBox),
+  popNote,
   stepNote,
   rows,
   h("div", { class: "widget-row", style: "margin-top:12px" }, playBtn, stepBtn, h("label", { class: "ctl" }, "速度 ", speedSel), frameOut),
@@ -185,16 +198,22 @@ function visibleSeries() {
   return data.algos.map((id, i) => ({ id, i, t: st.traces.find((t) => t.algo === id) }))
     .filter((s) => s.t && st.enabled.has(s.id))
     .flatMap((s) => [{ xs: s.t.xs, fs: s.t.fs, status: s.t.status, radius: s.t.radius, poly: s.t.poly, polyKind: s.t.poly_kind, label: data.optimizers[s.id].name, color: seriesColor(s.i),
-      info: s.t.info, ...(s.t.outer ? { dots: true, big: s.t.outer } : s.t.dots ? { dots: true } : {}) },
+      info: s.t.info, ...(s.t.outer ? { dots: true, big: s.t.outer } : s.t.dots ? { dots: true } : {}),
+      ...(s.t.pop ? { pop: s.t.pop, trail: !!s.t.pop_trail } : {}) },
     // A second iterate (ADMM's z) as a dashed path in the same color, with a hollow marker.
-    ...(s.t.zs ? [{ xs: s.t.zs, status: s.t.status, label: `${data.optimizers[s.id].name} 的 z`, color: seriesColor(s.i), dash: true, mark: true }] : [])]);
+    ...(s.t.zs ? [{ xs: s.t.zs, status: s.t.status, label: `${data.optimizers[s.id].name} 的 z`, color: seriesColor(s.i), dash: true, mark: true }] : []),
+    // Population methods (renderer ③): the points of each step on the contour plot,
+    // and the population's mean f as a dashed line on the convergence plot only.
+    ...(s.t.pop ? [{ xs: s.t.xs, fs: s.t.fmean, status: s.t.status, label: `${data.optimizers[s.id].name} 族群平均`, color: seriesColor(s.i), dash: true, convOnly: true }] : [])]);
 }
 
 function maxLen() { return Math.max(1, ...visibleSeries().map((s) => s.xs.length)); }
 
 function redraw() {
   const series = visibleSeries();
-  contour.setSeries(series);
+  contour.setSeries(series.filter((s) => !s.convOnly));
+  popNote.hidden = !series.some((s) => s.pop);
+  if (!popNote.hidden) popNote.textContent = popText(series.some((s) => s.pop && s.trail));
   if (constrained()) {
     const xs = st.grid.minima[0];
     const dist = series.map((s) => s.xs.map(([a, b]) => Math.hypot(a - xs[0], b - xs[1])));

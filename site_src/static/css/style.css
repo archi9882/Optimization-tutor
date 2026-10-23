@@ -514,3 +514,19 @@ table.tableau td.uncov { background: color-mix(in srgb, var(--s4) 10%, transpare
 /* ---- predict on LP / combinatorial widgets (lp.js, combo.js; phase B) ----
    The step counter "第 k / N 步" would give away step and pivot counts. */
 .predict-hidden .lp-lab .status-line { visibility: hidden; }
+/* ---- 測試函數圖鑑 (gallery.js) ---- */
+.gallery.ready { border: 1px solid var(--grid); border-radius: 12px; padding: 14px; background: var(--surface); }
+.tf-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tf-tab {
+  font: inherit; font-size: 14px; padding: 5px 11px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--grid); background: transparent; color: var(--ink);
+}
+.tf-tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tf-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tf-layout { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; align-items: start; }
+.tf-layout > div { min-width: 0; }
+.tf-card h3 { margin-top: 0; }
+.tf-formula { overflow-x: auto; overflow-y: hidden; }
+.gallery:not(.ready) .tf-card { margin-bottom: 18px; }
+@media (max-width: 760px) { .tf-layout { grid-template-columns: 1fr; } }
+.tf-formula .katex-display { font-size: .92em; margin: .4em 0; }
