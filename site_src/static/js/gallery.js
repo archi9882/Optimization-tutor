@@ -81,6 +81,16 @@ async function show(id, remember) {
   } catch (err) {
     if (current === id) status.textContent = `等高線資料載入失敗（${err.message}）；右側說明仍可閱讀。`;
   }
+  markOverflow();
   if (remember) { try { localStorage.setItem(KEY, id); } catch (e) { /* no storage */ } }
 }
+// Long formulas scroll sideways on narrow screens: say so where it happens.
+function markOverflow() {
+  for (const el of mount.querySelectorAll(".tf-formula")) {
+    const d = el.querySelector(".katex-display") || el;
+    el.classList.toggle("overflow", d.scrollWidth > el.clientWidth + 1);
+  }
+}
+window.addEventListener("resize", markOverflow);
+window.addEventListener("load", markOverflow);
 show(current, false);

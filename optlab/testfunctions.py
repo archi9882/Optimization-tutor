@@ -10,9 +10,10 @@ refinement). Each problem has two boxes:
           view for Ackley, Bohachevsky and Griewank, whose ripples would be
           invisible at that scale)
 
-`minima` lists every global minimum (f = fstar); `local_minima` lists a few
-notable local minima nearest to it (location rounded to 6 decimals, refined
-numerically). Gradients are analytic where f is differentiable; on a kink
+`minima` lists every global minimum (f = fstar); `local_minima` lists the
+local minima nearest to a global minimum, all of them up to some distance
+(ties included; location rounded to 6 decimals, refined numerically; checked
+in tests against every local minimum found on a grid). Gradients are analytic where f is differentiable; on a kink
 (|.| at zero, Ackley's cone tip at the origin) the sign of zero is taken as
 0. Hessians are central differences of the gradient (only Newton-type
 methods use them, and none is offered on these problems).
@@ -110,7 +111,8 @@ def levy() -> Problem:
         id="levy", name="Levy", f=f, grad=grad, hess=_fd_hess(grad),
         bounds=(-10.0, 10.0, -10.0, 10.0), domain=(-10.0, 10.0, -10.0, 10.0),
         x0=(-6.0, 7.0), minima=[(1.0, 1.0)], fstar=0.0, test_function=True,
-        local_minima=[(1.0, -2.89065), (1.0, 4.89065), (3.791082, 1.0), (-4.205435, 1.0)],
+        local_minima=[(3.791082, 1.0), (1.0, 4.89065), (1.0, -2.89065),
+                      (3.791082, 4.89065), (3.791082, -2.89065)],
         note="沿兩個座標方向各有一排排的谷，谷底高度慢慢升高。")
 
 

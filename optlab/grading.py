@@ -29,6 +29,8 @@ class StepCase:
     # Applied to both the learner's output and the expected value before
     # comparing, e.g. to ignore the order of an unordered result.
     normalize: Callable | None = None
+    # Arguments the function must not modify in place (compared after the call).
+    unchanged: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -120,7 +122,8 @@ def grade(ex: Exercise, fn: Callable | dict) -> dict:
     for case in ex.cases:
         try:
             # Fresh copies: learner code may mutate its inputs (e.g. union-find parents).
-            out = ns[case.func or ex.func_name](**copy.deepcopy(case.args))
+            args = copy.deepcopy(case.args)
+            out = ns[case.func or ex.func_name](**args)
             want = case.expected[0] if len(case.expected) == 1 else case.expected
             if out is None and want is not None:
                 raise TypeError("函式回傳了 None，是不是忘了 return？")
@@ -128,6 +131,9 @@ def grade(ex: Exercise, fn: Callable | dict) -> dict:
                 out, want = case.normalize(out), case.normalize(want)
             ok = same(out, want)
             msg = "通過" if ok else f"預期 {_fmt(want)}，得到 {_fmt(out)}"
+            changed = [k for k in case.unchanged if not same(args[k], case.args[k])]
+            if ok and changed:
+                ok, msg = False, f"函式修改了傳進來的 {', '.join(changed)}（要建立新的 list 再回傳）"
         except Exception as exc:  # learner code may raise anything
             ok, msg = False, _err(exc)
         results.append({"layer": 1, "name": case.name, "passed": ok,
@@ -165,6 +171,13 @@ def grade(ex: Exercise, fn: Callable | dict) -> dict:
         dev = max((math.dist(user_trace["xs"][i], ref_trace["xs"][i])
                    for i in range(n)), default=math.inf)
         ok = len(user_trace["xs"]) == len(ref_trace["xs"]) and dev < 1e-6
+        if "pop" in ref_trace:     # population methods: every point, not only the best
+            up, rp = user_trace.get("pop", []), ref_trace["pop"]
+            pdev = max((math.dist(a, b) for k in range(min(len(up), len(rp)))
+                        for a, b in zip(up[k], rp[k])), default=math.inf)
+            ok = ok and len(up) == len(rp) and all(len(a) == len(b) for a, b in zip(up, rp)) \
+                and pdev < 1e-6
+            dev = max(dev, pdev)
         msg = f"最大偏差 {dev:.2e}，步數 {len(user_trace['xs']) - 1}" \
               f" / 參考 {len(ref_trace['xs']) - 1}"
     else:

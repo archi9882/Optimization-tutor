@@ -530,3 +530,4 @@ table.tableau td.uncov { background: color-mix(in srgb, var(--s4) 10%, transpare
 .gallery:not(.ready) .tf-card { margin-bottom: 18px; }
 @media (max-width: 760px) { .tf-layout { grid-template-columns: 1fr; } }
 .tf-formula .katex-display { font-size: .92em; margin: .4em 0; }
+.tf-formula.overflow::after { content: "公式較長，可左右滑動 →"; display: block; font-size: 12px; color: var(--muted); }

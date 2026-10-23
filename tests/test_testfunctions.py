@@ -105,3 +105,34 @@ def test_grid_carries_local_minima_and_domain_only_for_test_functions() -> None:
     g = grid(make_problem("rastrigin"), 20, 20)
     assert g["local_minima"] and g["domain"] == [-5.12, 5.12, -5.12, 5.12]
     assert "local_minima" not in grid(make_problem("rosenbrock"), 20, 20)
+
+
+def _grid_local_minima(p, n=161):
+    """Every strict local minimum of a grid over the view, refined by Nelder-Mead."""
+    x0, x1, y0, y1 = p.bounds
+    xs = [x0 + (x1 - x0) * i / (n - 1) for i in range(n)]
+    ys = [y0 + (y1 - y0) * j / (n - 1) for j in range(n)]
+    Z = [[p.f((x, y)) for x in xs] for y in ys]
+    out: list = []
+    for j in range(1, n - 1):
+        for i in range(1, n - 1):
+            v = Z[j][i]
+            if all(v < Z[j + b][i + a] for a in (-1, 0, 1) for b in (-1, 0, 1) if a or b):
+                q = _nm(p.f, (xs[i], ys[j]), (x1 - x0) / (n - 1) / 4)
+                if p.f(q) > p.fstar + 1e-6 and not any(math.dist(q, r) < 1e-3 for r in out):
+                    out.append(q)
+    return out
+
+
+@pytest.mark.parametrize("pid", [i for i in IDS if make_problem(i).local_minima])
+def test_listed_local_minima_are_the_nearest_ones(pid: str) -> None:
+    """The gallery says 'the N local minima nearest to the global minimum':
+    no unlisted local minimum is as close as the farthest listed one."""
+    p = make_problem(pid)
+
+    def dist(q):
+        return min(math.dist(q, m) for m in p.minima)
+    far = max(dist(m) for m in p.local_minima)
+    for q in _grid_local_minima(p):
+        if dist(q) <= far + 1e-3:
+            assert any(math.dist(q, m) < 1e-4 for m in p.local_minima), (q, dist(q), far)

@@ -110,8 +110,8 @@ const frameOut = h("span", { class: "status-line" });
 const problemNote = h("p", { class: "hint-text" });
 const stepNote = h("p", { class: "step-note", "aria-live": "polite", style: "white-space: pre-line" });
 const popNote = h("p", { class: "hint-text pop-note", hidden: "" });
-const popText = (trail) => `族群方法：小圓點是這一步的族群${trail ? "，細線是粒子這一步的移動" : ""}，◎ 是到目前為止找到的最佳點；` +
-  "右圖實線是最佳值、虛線是族群平均 f。○ 為局部最小值、＋ 為全域最小值。";
+const popText = (trail, local) => `族群方法：小圓點是這一步的族群${trail ? "，細線是粒子這一步的移動" : ""}，◎ 是到目前為止找到的最佳點；` +
+  `右圖實線是最佳值、虛線是族群平均 f。${local ? "○ 為局部最小值、" : ""}＋ 為全域最小值。`;
 const convTitle = convBox.querySelector(".plot-title");
 
 const touch = touchUI();
@@ -213,7 +213,7 @@ function redraw() {
   const series = visibleSeries();
   contour.setSeries(series.filter((s) => !s.convOnly));
   popNote.hidden = !series.some((s) => s.pop);
-  if (!popNote.hidden) popNote.textContent = popText(series.some((s) => s.pop && s.trail));
+  if (!popNote.hidden) popNote.textContent = popText(series.some((s) => s.pop && s.trail), !!st.grid.local_minima?.length);
   if (constrained()) {
     const xs = st.grid.minima[0];
     const dist = series.map((s) => s.xs.map(([a, b]) => Math.hypot(a - xs[0], b - xs[1])));

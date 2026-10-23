@@ -221,3 +221,59 @@ def test_gallery_page_cards_and_lazy_grids(tmp_path: Path) -> None:
         if "src" in f:
             grid = json.loads((tmp_path / "algorithms" / f["src"]).read_text("utf-8"))
             assert len(grid["z"]) == len(grid["y"]) and len(grid["z"][0]) == len(grid["x"]) == 140
+
+
+# ---------- graders catch the classic slips ----------
+
+_GA_SLIPS = {
+    "no clipping": ("out.append(min(max(xd, lo), hi))", "out.append(xd)"),
+    "clip only when mutated": ("            xd = xd + delta * (hi - lo)\n        out.append(min(max(xd, lo), hi))",
+                               "            xd = min(max(xd + delta * (hi - lo), lo), hi)\n        out.append(xd)"),
+    "tie goes to j": ("fvals[j] < fvals[i]", "fvals[j] <= fvals[i]"),
+    "mutates the extra child": (
+        "            if len(new_pop) < len(pop):\n                child = mutate(c, rng, pm, eta_m, bounds)",
+        "            child = mutate(c, rng, pm, eta_m, bounds)\n            if len(new_pop) < len(pop):"),
+    "no r drawn when pc = 0": ("        if rng.random() < pc:", "        if pc > 0 and rng.random() < pc:"),
+    "re-evaluates elites": ("    new_f = [fvals[i] for i in elite]", "    new_f = [f(pop[i]) for i in elite]"),
+}
+
+
+@pytest.mark.parametrize("slip", list(_GA_SLIPS))
+def test_ga_grader_catches(slip: str) -> None:
+    from optlab.exercises import EXERCISES
+    from optlab.grading import grade_source
+    ex = EXERCISES["ga"]
+    old, new = _GA_SLIPS[slip]
+    assert ex.solution.count(old) == 1
+    res = grade_source(ex, ex.solution.replace(old, new))
+    assert not res["passed"]
+    assert any(not r["passed"] for r in res["results"] if r["layer"] == 1), slip
+
+
+def test_pso_grader_catches_in_place_update() -> None:
+    from optlab.exercises import EXERCISES
+    from optlab.grading import grade_source
+    ex = EXERCISES["pso"]
+    old = "    new_p, new_pf = list(pbest), list(pbest_f)"
+    res = grade_source(ex, ex.solution.replace(old, "    new_p, new_pf = pbest, pbest_f"))
+    assert not res["passed"] and any("修改了傳進來的" in r["message"] for r in res["results"])
+
+
+def test_layer3_compares_the_whole_population(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Same best path, different population: layer 3 must fail."""
+    from optlab import grading
+    from optlab.exercises import EXERCISES
+    real = grading.run
+    calls = []
+
+    def fake_run(*args, **kw):
+        t = real(*args, **kw)
+        calls.append(1)
+        if len(calls) == 2:                    # the learner's run (the reference runs first)
+            t["pop"][-1][0] = [t["pop"][-1][0][0] + 0.5, t["pop"][-1][0][1]]
+        return t
+    monkeypatch.setattr(grading, "run", fake_run)
+    ex = EXERCISES["ga"]
+    res = grading.grade_source(ex, ex.solution)
+    assert res["user_trace"]["xs"] == res["ref_trace"]["xs"]
+    assert not [r for r in res["results"] if r["layer"] == 3][0]["passed"]
